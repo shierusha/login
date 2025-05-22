@@ -176,7 +176,7 @@ async function signIn() {
   localStorage.setItem('player_username', player.username);
 
   setTimeout(() => {
-    window.location.href = 'https://sheruka-game.github.io/create-student/creat-st.html';
+    window.location.href = 'https://sheruka-game.github.io/create-student/charlist.html';
   }, 600);
 }
 

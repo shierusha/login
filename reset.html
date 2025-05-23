@@ -43,9 +43,7 @@
 
   // 之後可以用 supabase 了
   const { data } = await supabase.auth.getUser();
-</script>
-  
-  <script>
+
     function togglePw(inputId, btn) {
       const input = document.getElementById(inputId);
       if (input.type === 'password') {

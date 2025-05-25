@@ -1,8 +1,8 @@
 // ====== Supabase 設定 ======
-    const client = window.supabase.createClient(
-      'https://wfhwhvodgikpducrhgda.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
-    );
+const client = window.supabase.createClient(
+  'https://wfhwhvodgikpducrhgda.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
+);
 
 // ===== 錯誤訊息轉換 =====
 function transErrorMsg(msg) {
@@ -15,8 +15,7 @@ function transErrorMsg(msg) {
   if (msg.includes('Invalid email or password')) return '帳號或密碼錯誤';
   if (msg.includes('network error')) return '網路連線失敗，請稍後再試';
   if (msg.includes('Email rate limit')) return '請勿頻繁操作，請稍後再試';
-  // 你可以繼續加更多自訂
-  return msg; // 預設回傳原本內容
+  return msg;
 }
 
 // ==== 密碼顯示/隱藏（貓咪眼睛）====
@@ -83,7 +82,7 @@ async function signUp() {
 
   let data, error;
   try {
-    ({ data, error } = await supabase.auth.signUp({ email, password }));
+    ({ data, error } = await client.auth.signUp({ email, password }));
   } catch (e) {
     document.getElementById('signup-msg').textContent = '無法連線到伺服器';
     setLoading(false);
@@ -103,7 +102,7 @@ async function signUp() {
 
   let insertError;
   try {
-    ({ error: insertError } = await supabase.from('players').insert({
+    ({ error: insertError } = await client.from('players').insert({
       player_id: user.id,
       email: email,
       username: username,
@@ -136,7 +135,7 @@ async function signIn() {
   }
   let data, error;
   try {
-    ({ data, error } = await supabase.auth.signInWithPassword({ email, password }));
+    ({ data, error } = await client.auth.signInWithPassword({ email, password }));
   } catch (e) {
     document.getElementById('login-msg').textContent = '無法連線到伺服器';
     setLoading(false);
@@ -155,10 +154,9 @@ async function signIn() {
   }
   localStorage.setItem('player_id', user.id);
 
-  // 查詢玩家表
   let player, playerError;
   try {
-    ({ data: player, error: playerError } = await supabase
+    ({ data: player, error: playerError } = await client
       .from('players')
       .select('*')
       .eq('player_id', user.id)
@@ -191,8 +189,7 @@ async function handleForgot(e) {
     return;
   }
   document.getElementById('forgot-btn').classList.add('loading');
-  // 寄送 reset password 信
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+  const { error } = await client.auth.resetPasswordForEmail(email, {
     redirectTo: 'https://sheruka-game.github.io/school-battle/reset.html'
   });
   document.getElementById('forgot-btn').classList.remove('loading');

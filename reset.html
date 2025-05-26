@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="login.css">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="center">
@@ -14,12 +14,6 @@
 
     <!-- ⏳ loading -->
     <div id="loading-section">正在驗證中... 請稍候喵 (ฅ´ω`ฅ)</div>
-
-    <!-- ✅ signup 驗證成功 -->
-    <div id="signup-section" style="display:none">
-      <p class="msg success">信箱驗證成功，請返回登入畫面！</p>
-      <button onclick="goLogin()">返回登入</button>
-    </div>
 
     <!-- 🔐 reset password -->
     <form id="reset-section" style="display:none;" onsubmit="handleResetPassword(event)">
@@ -39,81 +33,59 @@
   </div>
 
   <script>
-// ====== Supabase 設定 ======
-const client = window.supabase.createClient(
-  'https://wfhwhvodgikpducrhgda.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
-);
-    function togglePw(inputId, btn) {
-      const input = document.getElementById(inputId);
-      if (input.type === 'password') {
-        input.type = 'text';
-        btn.textContent = '(=ω=)';
-      } else {
-        input.type = 'password';
-        btn.textContent = '(ΦωΦ)';
-      }
+  const client = window.supabase.createClient(
+    'https://wfhwhvodgikpducrhgda.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
+  );
+
+  function togglePw(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (input.type === 'password') {
+      input.type = 'text';
+      btn.textContent = '(=ω=)';
+    } else {
+      input.type = 'password';
+      btn.textContent = '(ΦωΦ)';
+    }
+  }
+
+  function goLogin() {
+    window.location.href = "https://shierusha.github.io/login/login.html";
+  }
+
+  window.addEventListener('DOMContentLoaded', async () => {
+    const hashParams = new URLSearchParams(window.location.hash.slice(1));
+    const access_token = hashParams.get('access_token');
+    const refresh_token = hashParams.get('refresh_token');
+    const type = new URLSearchParams(window.location.search).get('type') || hashParams.get('type');
+
+    if (!access_token || !refresh_token || !['signup', 'recovery'].includes(type)) {
+      goLogin();
+      return;
     }
 
-    function getTypeFromURL() {
-      const queryType = new URLSearchParams(window.location.search).get('type');
-      if (queryType) return queryType;
-      const hashType = new URLSearchParams(window.location.hash.slice(1)).get('type');
-      return hashType;
+    try {
+      await client.auth.setSession({ access_token, refresh_token });
+    } catch (err) {
+      console.warn('登入失敗:', err);
+      goLogin();
+      return;
     }
 
-    function goLogin() {
-      window.location.href = "https://shierusha.github.io/login/login.html";
+    if (type === 'recovery') {
+      const { data } = await client.auth.getUser();
+      if (!data?.user) {
+        goLogin();
+        return;
+      }
+      document.getElementById('loading-section').style.display = 'none';
+      document.getElementById('reset-section').style.display = 'block';
+    } else {
+      // signup 驗證成功也直接跳回登入畫面
+      goLogin();
     }
-    
-const hashParams = new URLSearchParams(window.location.hash.slice(1));
-if (hashParams.get('error_code') === 'otp_expired') {
-  document.body.innerHTML = `
-    <div class="center">
-      <h2>連結已失效</h2>
-      <p class="msg">這封驗證信已過期或無效，請回登入頁重新操作。</p>
-      <button onclick="location.href='login.html'">返回登入</button>
-    </div>
-  `;
-}
-    
-    window.addEventListener('DOMContentLoaded', async () => {
-      const hashParams = new URLSearchParams(window.location.hash.slice(1));
-      const access_token = hashParams.get('access_token');
-      const refresh_token = hashParams.get('refresh_token');
-      const type = getTypeFromURL();
+  });
 
-      // 顯示 loading
-      document.getElementById('loading-section').style.display = 'block';
-
-      if (access_token && refresh_token) {
-        try {
-          await supabase.auth.setSession({ access_token, refresh_token });
-        } catch (err) {
-          console.warn('登入失敗:', err);
-        }
-      }
-
-      await new Promise(r => setTimeout(r, 500)); // loading 顯示一下下
-
-      if (type === 'recovery') {
-        const { data } = await supabase.auth.getUser();
-        if (!data?.user) {
-          document.getElementById('loading-section').textContent = '連結已過期或無效，請重新申請。';
-          setTimeout(goLogin, 2000);
-          return;
-        }
-        document.getElementById('loading-section').style.display = 'none';
-        document.getElementById('reset-section').style.display = 'block';
-      } else if (type === 'signup') {
-        document.getElementById('loading-section').style.display = 'none';
-        document.getElementById('signup-section').style.display = 'block';
-      } else {
-        document.getElementById('loading-section').textContent = '連結參數錯誤，請從信箱重新點擊。';
-      }
-    });
-
-   // 4. 處理密碼重設
   async function handleResetPassword(e) {
     e.preventDefault();
     const newPassword = document.getElementById('new-password').value;
@@ -133,13 +105,13 @@ if (hashParams.get('error_code') === 'otp_expired') {
     document.getElementById('reset-btn').disabled = true;
     document.getElementById('reset-btn').textContent = '重設中...';
 
-    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    const { error } = await client.auth.updateUser({ password: newPassword });
 
     if (error) {
       msgDiv.textContent = '密碼重設失敗: ' + error.message;
       document.getElementById('reset-btn').disabled = false;
       document.getElementById('reset-btn').textContent = '送出';
-      setTimeout(goLogin, 3000); // 多停3秒
+      setTimeout(goLogin, 3000);
       return;
     }
 
@@ -147,6 +119,6 @@ if (hashParams.get('error_code') === 'otp_expired') {
     document.getElementById('reset-btn').disabled = true;
     setTimeout(goLogin, 1500);
   }
-</script>
+  </script>
 </body>
 </html>

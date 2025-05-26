@@ -108,7 +108,7 @@ async function signUp() {
       email,
       password,
       options: {
-        emailRedirectTo: 'https://shierusha.github.io/login/'
+        emailRedirectTo: 'https://shierusha.github.io/login/reset.html'
       }
     }));
   } catch (e) {

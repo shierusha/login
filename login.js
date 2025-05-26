@@ -180,7 +180,7 @@ async function signIn() {
   localStorage.setItem('player_username', player.username);
 
   setTimeout(() => {
-    window.location.href = 'https://sheruka-game.github.io/create-student/charlist.html';
+    window.location.href = 'https://shierusha.github.io/create-student/charlist.html';
   }, 600);
 }
 
@@ -196,7 +196,7 @@ async function handleForgot(e) {
   }
   document.getElementById('forgot-btn').classList.add('loading');
   const { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://sheruka-game.github.io/school-battle/reset.html'
+    redirectTo: 'https://shierusha.github.io/login/reset.html'
   });
   document.getElementById('forgot-btn').classList.remove('loading');
   if (error) {

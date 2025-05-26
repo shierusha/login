@@ -79,7 +79,7 @@ async function handleForgot(e) {
   }
   document.getElementById('forgot-btn').classList.add('loading');
   const { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://shierusha.github.io/school-battle/reset.html'
+    redirectTo: 'https://shierusha.github.io/login/reset.html'
   });
   document.getElementById('forgot-btn').classList.remove('loading');
   if (error) {

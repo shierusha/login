@@ -67,6 +67,29 @@ function setLoading(isLoading) {
   document.getElementById('forgot-btn').classList.toggle('loading', isLoading);
 }
 
+// ============ 忘記密碼 ============
+async function handleForgot(e) {
+  e.preventDefault();
+  const email = document.getElementById('forgot-email').value.trim();
+  const msgDiv = document.getElementById('forgot-msg');
+  msgDiv.textContent = '';
+  if (!email) {
+    msgDiv.textContent = '請輸入電子信箱';
+    return;
+  }
+  document.getElementById('forgot-btn').classList.add('loading');
+  const { error } = await client.auth.resetPasswordForEmail(email, {
+    redirectTo: 'https://shierusha.github.io/school-battle/reset.html'
+  });
+  document.getElementById('forgot-btn').classList.remove('loading');
+  if (error) {
+    msgDiv.textContent = '寄送失敗: ' + transErrorMsg(error.message);
+  } else {
+    msgDiv.textContent = '已寄送密碼重設信到你的信箱，請查收！';
+    msgDiv.className = 'msg success';
+  }
+}
+
 // ============ 註冊 ============
 async function signUp() {
   setLoading(true);
@@ -79,17 +102,16 @@ async function signUp() {
     setLoading(false);
     return;
   }
-
   let data, error;
   try {
-  ({ data, error } = await client.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: 'https://shierusha.github.io/login/'
-    }
-  }));
-} catch (e) {
+    ({ data, error } = await client.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: 'https://shierusha.github.io/login/'
+      }
+    }));
+  } catch (e) {
     document.getElementById('signup-msg').textContent = '無法連線到伺服器';
     setLoading(false);
     return;
@@ -105,7 +127,6 @@ async function signUp() {
     setLoading(false);
     return;
   }
-
   let insertError;
   try {
     ({ error: insertError } = await client.from('players').insert({
@@ -159,7 +180,6 @@ async function signIn() {
     return;
   }
   localStorage.setItem('player_id', user.id);
-
   let player, playerError;
   try {
     ({ data: player, error: playerError } = await client
@@ -178,33 +198,9 @@ async function signIn() {
     return;
   }
   localStorage.setItem('player_username', player.username);
-
   setTimeout(() => {
     window.location.href = 'https://shierusha.github.io/create-student/charlist.html';
   }, 600);
-}
-
-// ============ 忘記密碼 ============
-async function handleForgot(e) {
-  e.preventDefault();
-  const email = document.getElementById('forgot-email').value.trim();
-  const msgDiv = document.getElementById('forgot-msg');
-  msgDiv.textContent = '';
-  if (!email) {
-    msgDiv.textContent = '請輸入電子信箱';
-    return;
-  }
-  document.getElementById('forgot-btn').classList.add('loading');
-  const { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://shierusha.github.io/login/reset.html'
-  });
-  document.getElementById('forgot-btn').classList.remove('loading');
-  if (error) {
-    msgDiv.textContent = '寄送失敗: ' + transErrorMsg(error.message);
-  } else {
-    msgDiv.textContent = '已寄送密碼重設信到你的信箱，請查收！';
-    msgDiv.className = 'msg success';
-  }
 }
 
 // 初始化顯示登入

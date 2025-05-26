@@ -82,11 +82,14 @@ async function signUp() {
 
   let data, error;
   try {
-    ($1,
-  options: {
-    emailRedirectTo: 'https://shierusha.github.io/login/'
-  } }));
-  } catch (e) {
+  ({ data, error } = await client.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: 'https://shierusha.github.io/login/'
+    }
+  }));
+} catch (e) {
     document.getElementById('signup-msg').textContent = '無法連線到伺服器';
     setLoading(false);
     return;

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>技能效果後台填寫</title>
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background: #f4f7fa;
+      padding: 2rem;
+    }
+    .form-container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+    label {
+      display: block;
+      margin-top: 1rem;
+      font-weight: bold;
+    }
+    input, select, textarea {
+      width: 100%;
+      padding: 0.5rem;
+      margin-top: 0.3rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      margin-top: 2rem;
+      padding: 0.8rem 1.2rem;
+      background-color: #1d4076;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>新增技能 / 移動技能</h2>
+    
+    <label for="type">選擇類型</label>
+    <select id="type">
+      <option value="skill">技能效果（skill_effects）</option>
+      <option value="move">移動技能效果（movement_skills）</option>
+    </select>
+
+    <label for="effect_name">技能名稱</label>
+    <input type="text" id="effect_name" placeholder="例：撕裂斬">
+
+    <label for="description">技能描述</label>
+    <textarea id="description" rows="2" placeholder="例：對敵方造成穿透傷害，並附加流血效果"></textarea>
+
+    <label for="effect_type">技能職業分類 (effect_type_enum)</label>
+    <select id="effect_type">
+      <option value="attack">攻擊用</option>
+      <option value="heal">補血用</option>
+      <option value="tank">坦用</option>
+      <option value="buff">增益</option>
+      <option value="debuff">妨礙</option>
+    </select>
+
+    <label for="target_faction">作用對象 (faction_enum)</label>
+    <select id="target_faction">
+      <option value="enemy">敵方</option>
+      <option value="ally">隊友</option>
+      <option value="self">自己</option>
+      <option value="team">全體隊友</option>
+    </select>
+
+    <label for="max_targets">最大影響人數</label>
+    <input type="number" id="max_targets" min="1" max="3">
+
+    <label for="score">技能分數</label>
+    <input type="number" id="score" min="0">
+
+    <label for="extra_cd">額外冷卻時間</label>
+    <input type="number" id="extra_cd" min="0">
+
+    <label for="effect_code">技能程式碼（選填）</label>
+    <input type="text" id="effect_code">
+
+    <label for="effect_id_code">技能顯示碼（如 S-01-001）</label>
+    <input type="text" id="effect_id_code">
+
+    <button onclick="alert('這裡會送出資料到 Supabase：TODO')">送出資料</button>
+  </div>
+</body>
+</html>

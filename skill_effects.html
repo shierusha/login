@@ -6,127 +6,48 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; background: #f4f7fa; margin: 0; padding: 2rem; }
-    h2 { text-align: center; }
-    .container { max-width: 1000px; margin: auto; background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 2px 10px #0001; }
-    select, input, textarea { width: 100%; padding: 0.6rem; margin-top: 0.5rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 0.5rem; }
-    label { font-weight: bold; margin-top: 1rem; display: block; }
-    button { padding: 0.6rem 1rem; background-color: #1d4076; color: white; border: none; border-radius: 0.5rem; cursor: pointer; }
-    .success { color: #1767a0; font-weight: bold; }
-    .error { color: #c34d4d; font-weight: bold; }
-    .section { margin-top: 2rem; border-top: 1px solid #ddd; padding-top: 2rem; }
+    .container { max-width: 1080px; margin: auto; background: white; padding: 2rem; border-radius: 1.3rem; box-shadow: 0 2px 16px #0001; }
+    h2 { text-align: center; margin-bottom: 1.5rem; }
+    .tabs { display: flex; gap: 1.2em; margin-bottom: 1.5em; }
+    .tab { cursor: pointer; padding: 0.6em 2em; border-radius: 2em; background: #eef2fa; color: #1d4076; font-weight: 600; }
+    .tab.active { background: #1767a0; color: #fff; }
+    .search-row { display: flex; gap: 1em; align-items: center; margin-bottom: 1.2em; }
+    .search-row input { flex: 1; padding: 0.5em; border-radius: 0.7em; border: 1px solid #ccc; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
+    th, td { border-bottom: 1px solid #eef2fa; padding: 0.4em 0.6em; text-align: left; }
+    th { background: #f4f7fa; font-size: 1em; cursor: pointer; }
+    td.editing { background: #f5faff; }
+    td input, td textarea { width: 95%; border: 1px solid #bfc8d8; border-radius: 0.5em; padding: 0.2em 0.5em; }
+    .btn-del { background: #f66464; color: #fff; border: none; border-radius: 0.5em; padding: 0.2em 0.7em; cursor: pointer; font-weight: 700;}
+    .pagination { text-align: center; margin: 1em 0; }
+    .pagination button { margin: 0 0.25em; border: none; background: #d7e4f5; color: #1767a0; padding: 0.3em 0.7em; border-radius: 0.5em; font-weight: 600; cursor: pointer;}
+    .pagination button.active { background: #1767a0; color: #fff; }
+    .msg { min-height: 1.5em; margin-bottom: 0.8em; }
+    @media (max-width: 720px) {
+      .container { padding: 0.7em; }
+      .tabs { flex-direction: column; gap: 0.4em; }
+      th, td { font-size: 0.94em; }
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="container">
     <h2>技能管理後台</h2>
-    <label for="entry-type">選擇要輸入的資料類型</label>
-    <select id="entry-type" onchange="toggleForm()">
-      <option value="skill">技能效果 (skill_effects)</option>
-      <option value="move">移動技能效果 (movement_skills)</option>
-      <option value="debuff">技能副作用 (skill_debuff)</option>
-    </select>
-
-    <!-- 技能效果表單 -->
-    <form id="form-skill" class="form-block">
-      <label>技能名稱</label>
-      <input type="text" id="effect_name">
-      <label>技能描述</label>
-      <textarea id="description"></textarea>
-      <label>技能職業分類</label>
-      <select id="effect_type">
-        <option value="attack">攻擊用</option>
-        <option value="attack_only">專攻限定</option>
-        <option value="heal">補血用</option>
-        <option value="heal_only">專補限定</option>
-        <option value="tank">坦用</option>
-        <option value="tank_only">專坦限定</option>
-        <option value="buff">增益</option>
-        <option value="buff_only">專增益限定</option>
-        <option value="debuff">妨礙</option>
-        <option value="debuff_only">專妨礙限定</option>
-      </select>
-      <label>技能作用對象</label>
-      <select id="target_faction">
-        <option value="enemy">敵方</option>
-        <option value="ally">隊友</option>
-        <option value="self">自己</option>
-
-      </select>
-      <label>最大影響人數</label>
-      <input type="number" id="max_targets" min="1" max="3">
-      <label>技能分數</label>
-      <input type="number" id="score">
-      <label>額外冷卻時間</label>
-      <input type="number" id="extra_cd">
-      <label>顯示代碼 (可留空)</label>
-      <input type="text" id="effect_id_code">
-      <label>技能程式邏輯碼 (可留空)</label>
-      <input type="text" id="effect_code">
-    </form>
-
-    <!-- 移動技能效果表單 -->
-    <form id="form-move" class="form-block" style="display:none">
-      <label>移動技能名稱</label>
-      <input type="text" id="move_name">
-      <label>描述</label>
-      <textarea id="move_description"></textarea>
-      <label>技能作用對象</label>
-      <select id="move_target_faction">
-        <option value="enemy">敵方</option>
-        <option value="ally">隊友</option>
-        <option value="self">自己</option>
-        <option value="team">隊友全體</option>
-      </select>
-      <label>施放區域</label>
-      <select id="move_range">
-        <option value="same_zone">同區</option>
-        <option value="cross_zone">跨區</option>
-        <option value="all_zone">全區</option>
-      </select>
-      <label>最大影響人數</label>
-      <input type="number" id="move_max_targets" min="1" max="3" value="1">
-      <label>技能分數</label>
-      <input type="number" id="move_score">
-      <label>額外冷卻時間</label>
-      <input type="number" id="move_extra_cd">
-      <label>顯示代碼 (可留空)</label>
-      <input type="text" id="move_effect_id_code">
-      <label>技能程式邏輯碼 (可留空)</label>
-      <input type="text" id="move_effect_code">
-    </form>
-
-    <!-- 技能副作用表單 -->
-    <form id="form-debuff" class="form-block" style="display:none">
-      <label>副作用名稱</label>
-      <input type="text" id="debuff_name">
-      <label>副作用描述</label>
-      <textarea id="debuff_description"></textarea>
-      <label>副作用分類</label>
-      <select id="debuff_type">
-        <option value="cc">控場</option>
-        <option value="cd">冷卻</option>
-        <option value="pass">行動跳過</option>
-        <option value="debuff">一般負面狀態</option>
-        <option value="bleed">損血</option>
-      </select>
-      <label>抵銷用分數</label>
-      <input type="number" id="debuff_offset_score">
-      <label>額外冷卻時間</label>
-      <input type="number" id="debuff_extra_cd">
-      <label>套用對象</label>
-      <select id="debuff_applied_to">
-        <option value="self">自己</option>
-        <option value="toally">技能施放對象</option>
-      </select>
-      <label>顯示代碼 (可留空)</label>
-      <input type="text" id="debuff_effect_id_code">
-      <label>副作用程式邏輯碼 (可留空)</label>
-      <input type="text" id="debuff_effect_code">
-    </form>
-
-    <div id="msg" style="margin: 1em 0; min-height: 1.5em;"></div>
-    <button onclick="handleSubmit()">送出資料</button>
+    <div class="tabs">
+      <div class="tab active" id="tab-skill" onclick="switchTab('skill')">技能效果</div>
+      <div class="tab" id="tab-move" onclick="switchTab('move')">移動技能效果</div>
+      <div class="tab" id="tab-debuff" onclick="switchTab('debuff')">技能副作用</div>
+    </div>
+    <div class="search-row">
+      <input id="search" type="text" placeholder="搜尋名稱、描述、顯示代碼、邏輯碼…（即時過濾）" oninput="searchTable()">
+      <span class="msg" id="msg"></span>
+    </div>
+    <div class="table-wrap">
+      <table id="data-table"></table>
+    </div>
+    <div class="pagination" id="pagination"></div>
   </div>
 
   <script>
@@ -136,90 +57,214 @@
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
     );
 
-    function toggleForm() {
-      const type = document.getElementById('entry-type').value;
-      document.getElementById('form-skill').style.display = (type === 'skill') ? '' : 'none';
-      document.getElementById('form-move').style.display = (type === 'move') ? '' : 'none';
-      document.getElementById('form-debuff').style.display = (type === 'debuff') ? '' : 'none';
-      document.getElementById('msg').innerHTML = '';
+    // ============ 配置 =============
+    const PAGE_SIZE = 10;
+    const TABLES = {
+      skill: {
+        table: "skill_effects",
+        display: "技能效果",
+        pk: "effect_id",
+        fields: [
+          { key: "effect_name", name: "名稱", editable: true },
+          { key: "description", name: "描述", editable: true },
+          { key: "effect_type", name: "職業類型", editable: false },
+          { key: "target_faction", name: "對象", editable: false },
+          { key: "max_targets", name: "人數", editable: false },
+          { key: "score", name: "分數", editable: true },
+          { key: "extra_cd", name: "冷卻", editable: true },
+          { key: "effect_id_code", name: "顯示代碼", editable: true },
+          { key: "effect_code", name: "程式邏輯碼", editable: true }
+        ]
+      },
+      move: {
+        table: "movement_skills",
+        display: "移動技能效果",
+        pk: "move_id",
+        fields: [
+          { key: "move_name", name: "名稱", editable: true },
+          { key: "description", name: "描述", editable: true },
+          { key: "target_faction", name: "對象", editable: false },
+          { key: "range", name: "施放區域", editable: false },
+          { key: "max_targets", name: "人數", editable: false },
+          { key: "extra_cd", name: "冷卻", editable: true },
+          { key: "effect_id_code", name: "顯示代碼", editable: true },
+          { key: "effect_code", name: "程式邏輯碼", editable: true }
+        ]
+      },
+      debuff: {
+        table: "skill_debuff",
+        display: "技能副作用",
+        pk: "debuff_id",
+        fields: [
+          { key: "debuff_name", name: "名稱", editable: true },
+          { key: "description", name: "描述", editable: true },
+          { key: "debuff_type", name: "分類", editable: false },
+          { key: "offset_score", name: "抵銷分數", editable: true },
+          { key: "extra_cd", name: "冷卻", editable: true },
+          { key: "applied_to", name: "套用對象", editable: false },
+          { key: "effect_id_code", name: "顯示代碼", editable: true },
+          { key: "effect_code", name: "程式邏輯碼", editable: true }
+        ]
+      }
+    };
+
+    // ========== 狀態 ==========
+    let currentTab = "skill";
+    let rawData = [];
+    let filteredData = [];
+    let currentPage = 1;
+    let sortKey = null;
+    let sortAsc = true;
+    let editingCell = null;
+
+    // ========== Tab 切換 ==========
+    function switchTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tab).classList.add('active');
+      document.getElementById('search').value = '';
+      currentPage = 1;
+      loadData();
     }
 
-    async function handleSubmit() {
-      const type = document.getElementById('entry-type').value;
-      let data = {};
-
-      // 收集欄位
-      if (type === 'skill') {
-        data = {
-          effect_name: document.getElementById('effect_name').value.trim(),
-          description: document.getElementById('description').value.trim(),
-          effect_type: document.getElementById('effect_type').value,
-          target_faction: document.getElementById('target_faction').value,
-          max_targets: parseInt(document.getElementById('max_targets').value || 1),
-          score: parseInt(document.getElementById('score').value || 0),
-          extra_cd: parseInt(document.getElementById('extra_cd').value || 0),
-          effect_id_code: document.getElementById('effect_id_code').value.trim(),
-          effect_code: document.getElementById('effect_code').value.trim()
-        };
-      } else if (type === 'move') {
-        data = {
-          move_name: document.getElementById('move_name').value.trim(),
-          description: document.getElementById('move_description').value.trim(),
-          target_faction: document.getElementById('move_target_faction').value,
-          range: document.getElementById('move_range').value,
-          max_targets: parseInt(document.getElementById('move_max_targets').value || 1),
-          score: parseInt(document.getElementById('move_score').value || 0),
-          extra_cd: parseInt(document.getElementById('move_extra_cd').value || 0),
-          effect_id_code: document.getElementById('move_effect_id_code').value.trim(),
-          effect_code: document.getElementById('move_effect_code').value.trim()
-        };
-      } else if (type === 'debuff') {
-        data = {
-          debuff_name: document.getElementById('debuff_name').value.trim(),
-          description: document.getElementById('debuff_description').value.trim(),
-          debuff_type: document.getElementById('debuff_type').value,
-          offset_score: parseInt(document.getElementById('debuff_offset_score').value || 0),
-          extra_cd: parseInt(document.getElementById('debuff_extra_cd').value || 0),
-          applied_to: document.getElementById('debuff_applied_to').value,
-          effect_id_code: document.getElementById('debuff_effect_id_code').value.trim(),
-          effect_code: document.getElementById('debuff_effect_code').value.trim()
-        };
-      }
-
-      // 驗證
-      let msg = '';
-      if (type === 'skill' && !data.effect_name) msg = '請填寫技能名稱';
-      if (type === 'move' && !data.move_name) msg = '請填寫移動技能名稱';
-      if (type === 'debuff' && !data.debuff_name) msg = '請填寫副作用名稱';
-      if (msg) { showMsg(msg, true); return; }
-
-      // 寫入 Supabase
-      let table = (type === 'skill') ? 'skill_effects' : (type === 'move' ? 'movement_skills' : 'skill_debuff');
-      let { error } = await client.from(table).insert([data]);
+    // ========== 載入資料 ==========
+    async function loadData() {
+      setMsg("資料載入中...");
+      const table = TABLES[currentTab].table;
+      let { data, error } = await client.from(table).select("*").order(TABLES[currentTab].fields[0].key, { ascending: true });
       if (error) {
-        showMsg('寫入失敗：' + error.message, true);
-      } else {
-        showMsg('✅ 寫入成功！');
-        clearForm(type);
+        setMsg("資料讀取失敗：" + error.message, true); return;
       }
+      rawData = data || [];
+      filteredData = rawData;
+      renderTable();
+      setMsg('');
     }
 
-    function showMsg(msg, isError) {
-      document.getElementById('msg').innerHTML = '<span class=\"' + (isError ? 'error' : 'success') + '\">' + msg + '</span>';
+    // ========== 查詢 ==========
+    function searchTable() {
+      const kw = document.getElementById('search').value.trim().toLowerCase();
+      if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
+      filteredData = rawData.filter(row =>
+        Object.values(row).join(' ').toLowerCase().includes(kw)
+      );
+      currentPage = 1;
+      renderTable();
     }
-    function clearForm(type) {
-      if (type === 'skill') {
-        ['effect_name', 'description', 'effect_id_code', 'effect_code', 'score', 'extra_cd'].forEach(id => document.getElementById(id).value = '');
-        document.getElementById('max_targets').value = '';
-      }
-      if (type === 'move') {
-        ['move_name', 'move_description', 'move_effect_id_code', 'move_effect_code', 'move_score', 'move_extra_cd'].forEach(id => document.getElementById(id).value = '');
-        document.getElementById('move_max_targets').value = '1';
-      }
-      if (type === 'debuff') {
-        ['debuff_name', 'debuff_description', 'debuff_effect_id_code', 'debuff_effect_code', 'debuff_offset_score', 'debuff_extra_cd'].forEach(id => document.getElementById(id).value = '');
-      }
+
+    // ========== 排序 ==========
+    function sortBy(key) {
+      if (sortKey === key) sortAsc = !sortAsc;
+      else { sortKey = key; sortAsc = true; }
+      filteredData.sort((a, b) => {
+        if (a[key] == null) return 1;
+        if (b[key] == null) return -1;
+        if (typeof a[key] === "number" && typeof b[key] === "number")
+          return sortAsc ? a[key] - b[key] : b[key] - a[key];
+        return sortAsc ? String(a[key]).localeCompare(b[key]) : String(b[key]).localeCompare(a[key]);
+      });
+      renderTable();
     }
+
+    // ========== 分頁 ==========
+    function renderTable() {
+      const fields = TABLES[currentTab].fields;
+      const pk = TABLES[currentTab].pk;
+      const table = document.getElementById('data-table');
+      const start = (currentPage - 1) * PAGE_SIZE;
+      const pageRows = filteredData.slice(start, start + PAGE_SIZE);
+
+      // 表頭
+      let th = '<tr>' + fields.map(f =>
+        `<th onclick="sortBy('${f.key}')">${f.name}${sortKey === f.key ? (sortAsc ? ' ▲' : ' ▼') : ''}</th>`
+      ).join('') + '<th>操作</th></tr>';
+
+      // 表身
+      let trs = pageRows.map((row, ridx) => {
+        return `<tr>` + fields.map(f => {
+          const val = row[f.key] ?? "";
+          // 編輯狀態判斷
+          if (f.editable && editingCell && editingCell.id === row[pk] && editingCell.key === f.key) {
+            return `<td class="editing"><input type="text" value="${val}" 
+              onblur="endEdit('${row[pk]}','${f.key}',this.value)" 
+              onkeydown="if(event.key==='Enter'){endEdit('${row[pk]}','${f.key}',this.value)}"></td>`;
+          } else if (f.editable) {
+            return `<td onclick="startEdit('${row[pk]}','${f.key}')">${val || '<span style=\'color:#aaa\'>[空]</span>'}</td>`;
+          } else {
+            return `<td>${val || ''}</td>`;
+          }
+        }).join('') + 
+        `<td>
+          <button class="btn-del" onclick="delRow('${row[pk]}')">刪除</button>
+        </td></tr>`;
+      }).join('');
+      table.innerHTML = th + trs;
+
+      // 分頁
+      renderPagination();
+    }
+
+    function renderPagination() {
+      const pageCount = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
+      let html = '';
+      for (let i = 1; i <= pageCount; i++) {
+        html += `<button ${i === currentPage ? 'class="active"' : ''} onclick="gotoPage(${i})">${i}</button>`;
+      }
+      document.getElementById('pagination').innerHTML = html;
+    }
+    function gotoPage(p) { currentPage = p; renderTable(); }
+
+    // ========== 編輯 ==========
+    function startEdit(id, key) {
+      editingCell = { id, key };
+      renderTable();
+      setTimeout(() => { // 自動 focus
+        let el = document.querySelector('td.editing input, td.editing textarea');
+        if(el) el.focus();
+      }, 80);
+    }
+    async function endEdit(id, key, value) {
+      const fields = TABLES[currentTab].fields;
+      const pk = TABLES[currentTab].pk;
+      editingCell = null;
+      // 找到該筆的完整資料，修改該欄位
+      let row = rawData.find(r => String(r[pk]) === String(id));
+      if (!row) return renderTable();
+      if (row[key] == value) return renderTable();
+      // 組成更新物件
+      let updateObj = {};
+      updateObj[key] = (fields.find(f => f.key === key) && typeof row[key] === "number") ? Number(value) : value;
+      let { error } = await client.from(TABLES[currentTab].table).update(updateObj).eq(pk, id);
+      if (error) setMsg('⚠️ 修改失敗: ' + error.message, true);
+      else setMsg('✔️ 已修改');
+      await loadData();
+    }
+
+    // ========== 刪除 ==========
+    async function delRow(id) {
+      if (!confirm('確定要刪除這筆資料喵？刪錯笑你！')) return;
+      const pk = TABLES[currentTab].pk;
+      let { error } = await client.from(TABLES[currentTab].table).delete().eq(pk, id);
+      if (error) setMsg('⚠️ 刪除失敗: ' + error.message, true);
+      else setMsg('已刪除！');
+      await loadData();
+    }
+
+    function setMsg(msg, err) {
+      document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
+    }
+
+    // ========== 首次載入 ==========
+    loadData();
+
+    // 全域可用
+    window.switchTab = switchTab;
+    window.searchTable = searchTable;
+    window.sortBy = sortBy;
+    window.gotoPage = gotoPage;
+    window.startEdit = startEdit;
+    window.endEdit = endEdit;
+    window.delRow = delRow;
   </script>
 </body>
 </html>

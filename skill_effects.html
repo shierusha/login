@@ -2,27 +2,30 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>謝爾夏｜技能管理後台（三表整合）</title>
+  <title>謝爾夏｜技能管理後台</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; background: #f4f7fa; margin: 0; padding: 2rem; }
-    .container { max-width: 1080px; margin: auto; background: white; padding: 2rem; border-radius: 1.3rem; box-shadow: 0 2px 16px #0001; }
-    h2 { text-align: center; margin-bottom: 1.5rem; }
-    .tabs { display: flex; gap: 1.2em; margin-bottom: 1.5em; }
-    .tab { cursor: pointer; padding: 0.6em 2em; border-radius: 2em; background: #eef2fa; color: #1d4076; font-weight: 600; transition: background .18s;}
+    .container { max-width: 1120px; margin: auto; background: white; padding: 2rem; border-radius: 1.3rem; box-shadow: 0 2px 16px #0001; }
+    h2 { text-align: center; margin-bottom: 1.3rem; }
+    .tabs { display: flex; gap: 1.2em; margin-bottom: 1.3em; }
+    .tab { cursor: pointer; padding: 0.65em 2.2em; border-radius: 2em; background: #eef2fa; color: #1d4076; font-weight: 600; transition: background .18s;}
     .tab.active { background: #1767a0; color: #fff; }
-    .form-wrap { margin-bottom: 2em; }
-    .form-row { display: flex; flex-wrap: wrap; gap: 1.2em; }
-    .form-group { flex: 1 1 260px; min-width: 160px; display: flex; flex-direction: column; }
-    .form-group label { font-weight: 700; margin-bottom: 0.2em; }
+    .add-form-block { margin-bottom: 1.5em; padding: 1.2em; background: #f7f9fd; border-radius: 1em; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 1.1em; margin-bottom: 0.8em;}
+    .form-group { flex: 1 1 270px; min-width: 160px; display: flex; flex-direction: column; }
+    .form-group label { font-weight: 700; margin-bottom: 0.17em; }
     .form-group input, .form-group select, .form-group textarea { padding: 0.44em 0.5em; border: 1px solid #ccc; border-radius: 0.5em; }
-    .form-group textarea { min-height: 2.3em; resize: vertical; }
-    .submit-btn { background: #1767a0; color: #fff; border: none; border-radius: 0.5em; padding: 0.6em 1.5em; font-weight: 600; cursor: pointer; align-self: flex-end; margin-top: 0.8em;}
+    .form-group textarea { min-height: 2.2em; resize: vertical; }
+    .form-group input.required, .form-group select.required { border-color: #f00; }
+    .form-actions { display: flex; gap: 1em; align-items: center; }
+    .submit-btn { background: #1767a0; color: #fff; border: none; border-radius: 0.5em; padding: 0.58em 1.45em; font-weight: 600; cursor: pointer;}
+    .clear-btn { background: #bfc8d8; color: #143158; border: none; border-radius: 0.5em; padding: 0.54em 1.1em; font-weight: 500; cursor: pointer;}
     .search-row { display: flex; gap: 1em; align-items: center; margin-bottom: 1.2em; }
     .search-row input { flex: 1; padding: 0.5em; border-radius: 0.7em; border: 1px solid #ccc; }
     .table-wrap { overflow-x: auto; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
-    th, td { border-bottom: 1px solid #eef2fa; padding: 0.4em 0.6em; text-align: left; }
+    th, td { border-bottom: 1px solid #eef2fa; padding: 0.44em 0.63em; text-align: left; }
     th { background: #f4f7fa; font-size: 1em; cursor: pointer; }
     td.editing { background: #f5faff; }
     td input, td textarea { width: 95%; border: 1px solid #bfc8d8; border-radius: 0.5em; padding: 0.2em 0.5em; }
@@ -31,7 +34,7 @@
     .pagination button { margin: 0 0.25em; border: none; background: #d7e4f5; color: #1767a0; padding: 0.3em 0.7em; border-radius: 0.5em; font-weight: 600; cursor: pointer;}
     .pagination button.active { background: #1767a0; color: #fff; }
     .msg { min-height: 1.5em; margin-bottom: 0.8em; }
-    @media (max-width: 900px) {
+    @media (max-width: 950px) {
       .form-row { flex-direction: column; gap: 0.3em;}
       .tabs { flex-direction: column; gap: 0.4em;}
       th, td { font-size: 0.95em; }
@@ -43,106 +46,8 @@
 <body>
   <div class="container">
     <h2>技能管理後台</h2>
-    <div class="tabs" id="tabs">
-      <div class="tab active" data-tab="skill">技能效果</div>
-      <div class="tab" data-tab="move">移動技能效果</div>
-      <div class="tab" data-tab="debuff">技能副作用</div>
-    </div>
-
-    <div class="form-wrap">
-      <form id="add-skill-form" class="form-block" onsubmit="return handleAdd(event)">
-        <!-- 技能效果 -->
-        <div id="add-skill" class="add-form-block">
-          <div class="form-row">
-            <div class="form-group"><label>名稱<input type="text" id="add_effect_name"></label></div>
-            <div class="form-group"><label>分數<input type="number" id="add_score"></label></div>
-            <div class="form-group"><label>職業類型
-              <select id="add_effect_type">
-                <option value="attack">攻擊用</option><option value="attack_only">專攻限定</option>
-                <option value="heal">補血用</option><option value="heal_only">專補限定</option>
-                <option value="tank">坦用</option><option value="tank_only">專坦限定</option>
-                <option value="buff">增益</option><option value="buff_only">專增益限定</option>
-                <option value="debuff">妨礙</option><option value="debuff_only">專妨礙限定</option>
-              </select></label></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>描述<input type="text" id="add_description"></label></div>
-            <div class="form-group"><label>對象
-              <select id="add_target_faction">
-                <option value="enemy">敵方</option>
-                <option value="ally">隊友</option>
-                <option value="self">自己</option>
-                <option value="team">隊友全體</option>
-              </select></label></div>
-            <div class="form-group"><label>最大人數<input type="number" id="add_max_targets" min="1" max="3" value="1"></label></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>冷卻<input type="number" id="add_extra_cd"></label></div>
-            <div class="form-group"><label>顯示代碼<input type="text" id="add_effect_id_code" placeholder="可空"></label></div>
-            <div class="form-group"><label>邏輯碼<input type="text" id="add_effect_code" placeholder="可空"></label></div>
-            <button type="submit" class="submit-btn">送出</button>
-          </div>
-        </div>
-        <!-- 移動技能效果 -->
-        <div id="add-move" class="add-form-block" style="display:none">
-          <div class="form-row">
-            <div class="form-group"><label>名稱<input type="text" id="add_move_name"></label></div>
-            <div class="form-group"><label>施放區域
-              <select id="add_move_range">
-                <option value="same_zone">同區</option>
-                <option value="cross_zone">跨區</option>
-                <option value="all_zone">全區</option>
-              </select></label></div>
-            <div class="form-group"><label>對象
-              <select id="add_move_target_faction">
-                <option value="enemy">敵方</option>
-                <option value="ally">隊友</option>
-                <option value="self">自己</option>
-                <option value="team">隊友全體</option>
-              </select></label></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>描述<input type="text" id="add_move_description"></label></div>
-            <div class="form-group"><label>最大人數<input type="number" id="add_move_max_targets" min="1" max="3" value="1"></label></div>
-            <div class="form-group"><label>冷卻<input type="number" id="add_move_extra_cd"></label></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>顯示代碼<input type="text" id="add_move_effect_id_code" placeholder="可空"></label></div>
-            <div class="form-group"><label>邏輯碼<input type="text" id="add_move_effect_code" placeholder="可空"></label></div>
-            <div style="flex:1"></div>
-            <button type="submit" class="submit-btn">送出</button>
-          </div>
-        </div>
-        <!-- 技能副作用 -->
-        <div id="add-debuff" class="add-form-block" style="display:none">
-          <div class="form-row">
-            <div class="form-group"><label>名稱<input type="text" id="add_debuff_name"></label></div>
-            <div class="form-group"><label>分類
-              <select id="add_debuff_type">
-                <option value="cc">控場</option><option value="cd">冷卻</option>
-                <option value="pass">行動跳過</option><option value="debuff">一般負面狀態</option>
-                <option value="bleed">損血</option>
-              </select></label></div>
-            <div class="form-group"><label>抵銷分數<input type="number" id="add_debuff_offset_score"></label></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>描述<input type="text" id="add_debuff_description"></label></div>
-            <div class="form-group"><label>冷卻<input type="number" id="add_debuff_extra_cd"></label></div>
-            <div class="form-group"><label>套用對象
-              <select id="add_debuff_applied_to">
-                <option value="self">自己</option>
-                <option value="toally">技能施放對象</option>
-              </select></label></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>顯示代碼<input type="text" id="add_debuff_effect_id_code" placeholder="可空"></label></div>
-            <div class="form-group"><label>邏輯碼<input type="text" id="add_debuff_effect_code" placeholder="可空"></label></div>
-            <div style="flex:1"></div>
-            <button type="submit" class="submit-btn">送出</button>
-          </div>
-        </div>
-      </form>
-    </div>
+    <div class="tabs" id="tabs"></div>
+    <div class="add-form-block" id="add-form-block"></div>
     <div class="search-row">
       <input id="search" type="text" placeholder="搜尋名稱、描述、顯示代碼、邏輯碼…" oninput="searchTable()">
       <span class="msg" id="msg"></span>
@@ -153,262 +58,273 @@
     <div class="pagination" id="pagination"></div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // Supabase 設定
-    const client = window.supabase.createClient(
-      'https://wfhwhvodgikpducrhgda.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
-    );
+<script>
+  // ====== Supabase 設定 ======
+  const client = window.supabase.createClient(
+    'https://wfhwhvodgikpducrhgda.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
+  );
 
-    const PAGE_SIZE = 10;
-    const TABLES = {
-      skill: {
-        table: "skill_effects",
-        pk: "effect_id",
-        fields: [
-          { key: "effect_name", name: "名稱", editable: true },
-          { key: "description", name: "描述", editable: true },
-          { key: "effect_type", name: "職業類型", editable: false },
-          { key: "target_faction", name: "對象", editable: false },
-          { key: "max_targets", name: "人數", editable: false },
-          { key: "score", name: "分數", editable: true },
-          { key: "extra_cd", name: "冷卻", editable: true },
-          { key: "effect_id_code", name: "顯示代碼", editable: true },
-          { key: "effect_code", name: "程式邏輯碼", editable: true }
-        ]
-      },
-      move: {
-        table: "movement_skills",
-        pk: "move_id",
-        fields: [
-          { key: "move_name", name: "名稱", editable: true },
-          { key: "description", name: "描述", editable: true },
-          { key: "target_faction", name: "對象", editable: false },
-          { key: "range", name: "施放區域", editable: false },
-          { key: "max_targets", name: "人數", editable: false },
-          { key: "extra_cd", name: "冷卻", editable: true },
-          { key: "effect_id_code", name: "顯示代碼", editable: true },
-          { key: "effect_code", name: "程式邏輯碼", editable: true }
-        ]
-      },
-      debuff: {
-        table: "skill_debuff",
-        pk: "debuff_id",
-        fields: [
-          { key: "debuff_name", name: "名稱", editable: true },
-          { key: "description", name: "描述", editable: true },
-          { key: "debuff_type", name: "分類", editable: false },
-          { key: "offset_score", name: "抵銷分數", editable: true },
-          { key: "extra_cd", name: "冷卻", editable: true },
-          { key: "applied_to", name: "套用對象", editable: false },
-          { key: "effect_id_code", name: "顯示代碼", editable: true },
-          { key: "effect_code", name: "程式邏輯碼", editable: true }
-        ]
-      }
-    };
+  // ============ 配置 ============
+  const PAGE_SIZE = 10;
+  const TABLES = {
+    skill: {
+      label: "技能效果", table: "skill_effects", pk: "effect_id",
+      fields: [
+        { key: "effect_name", name: "名稱", type: "text", required: true },
+        { key: "description", name: "描述", type: "text", required: true },
+        { key: "effect_type", name: "職業類型", type: "select", required: true, options: [
+          {v:"attack",t:"攻擊用"}, {v:"attack_only",t:"專攻限定"}, {v:"heal",t:"補血用"}, {v:"heal_only",t:"專補限定"},
+          {v:"tank",t:"坦用"}, {v:"tank_only",t:"專坦限定"}, {v:"buff",t:"增益"}, {v:"buff_only",t:"專增益限定"},
+          {v:"debuff",t:"妨礙"}, {v:"debuff_only",t:"專妨礙限定"}
+        ]},
+        { key: "target_faction", name: "對象", type: "select", required: true, options: [
+          {v:"enemy",t:"敵方"}, {v:"ally",t:"隊友"}, {v:"self",t:"自己"}, {v:"team",t:"隊友全體"}
+        ]},
+        { key: "max_targets", name: "人數", type: "number", required: true, min:1, max:3 },
+        { key: "score", name: "分數", type: "number", required: true },
+        { key: "extra_cd", name: "冷卻", type: "number", required: false },
+        { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
+        { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
+      ]
+    },
+    move: {
+      label: "移動技能效果", table: "movement_skills", pk: "move_id",
+      fields: [
+        { key: "move_name", name: "名稱", type: "text", required: true },
+        { key: "description", name: "描述", type: "text", required: true },
+        { key: "target_faction", name: "對象", type: "select", required: true, options: [
+          {v:"enemy",t:"敵方"}, {v:"ally",t:"隊友"}, {v:"self",t:"自己"}, {v:"team",t:"隊友全體"}
+        ]},
+        { key: "range", name: "施放區域", type: "select", required: true, options: [
+          {v:"same_zone",t:"同區"}, {v:"cross_zone",t:"跨區"}, {v:"all_zone",t:"全區"}
+        ]},
+        { key: "max_targets", name: "人數", type: "number", required: true, min:1, max:3 },
+        { key: "extra_cd", name: "冷卻", type: "number", required: false },
+        { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
+        { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
+      ]
+    },
+    debuff: {
+      label: "技能副作用", table: "skill_debuff", pk: "debuff_id",
+      fields: [
+        { key: "debuff_name", name: "名稱", type: "text", required: true },
+        { key: "description", name: "描述", type: "text", required: true },
+        { key: "debuff_type", name: "分類", type: "select", required: true, options: [
+          {v:"cc",t:"控場"}, {v:"cd",t:"冷卻"}, {v:"pass",t:"行動跳過"}, {v:"debuff",t:"一般負面狀態"}, {v:"bleed",t:"損血"}
+        ]},
+        { key: "offset_score", name: "抵銷分數", type: "number", required: true },
+        { key: "extra_cd", name: "冷卻", type: "number", required: false },
+        { key: "applied_to", name: "套用對象", type: "select", required: true, options: [
+          {v:"self",t:"自己"}, {v:"toally",t:"技能施放對象"}
+        ]},
+        { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
+        { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
+      ]
+    }
+  };
+  let currentTab = "skill", rawData = [], filteredData = [], currentPage = 1, sortKey = null, sortAsc = true, editingCell = null;
 
-    let currentTab = "skill";
-    let rawData = [];
-    let filteredData = [];
-    let currentPage = 1;
-    let sortKey = null;
-    let sortAsc = true;
-    let editingCell = null;
-
-    // 用 JS 綁定 tab 切換
-    document.addEventListener('DOMContentLoaded', function () {
-      // 綁定 tab 切換
-      document.querySelectorAll('.tab').forEach(tabBtn => {
-        tabBtn.onclick = function() {
-          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-          tabBtn.classList.add('active');
-          switchTab(tabBtn.dataset.tab);
+  // 動態渲染 Tab
+  function renderTabs() {
+    let html = "";
+    for(let key in TABLES) {
+      html += `<div class="tab${currentTab===key?" active":""}" data-tab="${key}">${TABLES[key].label}</div>`;
+    }
+    document.getElementById('tabs').innerHTML = html;
+    document.querySelectorAll('.tab').forEach(tabBtn => {
+      tabBtn.onclick = function() {
+        if(currentTab !== tabBtn.dataset.tab) {
+          currentTab = tabBtn.dataset.tab;
+          renderTabs();
+          renderAddForm();
+          document.getElementById('search').value = '';
+          currentPage = 1;
+          loadData();
         }
-      });
-      // 初始顯示
-      document.querySelectorAll('.add-form-block').forEach(el => el.style.display = 'none');
-      document.getElementById('add-skill').style.display = '';
-      loadData();
+      };
     });
+  }
 
-    function switchTab(tab) {
-      currentTab = tab;
-      // 顯示對應新增表單
-      document.querySelectorAll('.add-form-block').forEach(el => el.style.display = 'none');
-      document.getElementById('add-' + tab).style.display = '';
-      document.getElementById('search').value = '';
-      currentPage = 1;
-      loadData();
-    }
-
-    // ========== 新增資料 ==========
-    async function handleAdd(e) {
-      e.preventDefault();
-      let data = {}, table = TABLES[currentTab].table;
-      if (currentTab === 'skill') {
-        data = {
-          effect_name: document.getElementById('add_effect_name').value.trim(),
-          description: document.getElementById('add_description').value.trim(),
-          effect_type: document.getElementById('add_effect_type').value,
-          target_faction: document.getElementById('add_target_faction').value,
-          max_targets: parseInt(document.getElementById('add_max_targets').value || 1),
-          score: parseInt(document.getElementById('add_score').value || 0),
-          extra_cd: parseInt(document.getElementById('add_extra_cd').value || 0),
-          effect_id_code: document.getElementById('add_effect_id_code').value.trim() || null,
-          effect_code: document.getElementById('add_effect_code').value.trim() || null
-        };
-        if (!data.effect_name) { setMsg('請填寫技能名稱', true); return false; }
-      } else if (currentTab === 'move') {
-        data = {
-          move_name: document.getElementById('add_move_name').value.trim(),
-          description: document.getElementById('add_move_description').value.trim(),
-          target_faction: document.getElementById('add_move_target_faction').value,
-          range: document.getElementById('add_move_range').value,
-          max_targets: parseInt(document.getElementById('add_move_max_targets').value || 1),
-          extra_cd: parseInt(document.getElementById('add_move_extra_cd').value || 0),
-          effect_id_code: document.getElementById('add_move_effect_id_code').value.trim() || null,
-          effect_code: document.getElementById('add_move_effect_code').value.trim() || null
-        };
-        if (!data.move_name) { setMsg('請填寫移動技能名稱', true); return false; }
-      } else if (currentTab === 'debuff') {
-        data = {
-          debuff_name: document.getElementById('add_debuff_name').value.trim(),
-          description: document.getElementById('add_debuff_description').value.trim(),
-          debuff_type: document.getElementById('add_debuff_type').value,
-          offset_score: parseInt(document.getElementById('add_debuff_offset_score').value || 0),
-          extra_cd: parseInt(document.getElementById('add_debuff_extra_cd').value || 0),
-          applied_to: document.getElementById('add_debuff_applied_to').value,
-          effect_id_code: document.getElementById('add_debuff_effect_id_code').value.trim() || null,
-          effect_code: document.getElementById('add_debuff_effect_code').value.trim() || null
-        };
-        if (!data.debuff_name) { setMsg('請填寫副作用名稱', true); return false; }
+  // 動態渲染 新增表單
+  function renderAddForm() {
+    const fields = TABLES[currentTab].fields;
+    let html = `<form id="add-form" autocomplete="off" onsubmit="return handleAdd(event)">
+      <div>`;
+    for(let i=0;i<fields.length;i+=3) {
+      html += `<div class="form-row">`;
+      for(let j=i;j<i+3 && j<fields.length;j++) {
+        const f = fields[j];
+        html += `<div class="form-group">`;
+        html += `<label>${f.name}`;
+        if(f.type === "select") {
+          html += `<select id="add_${f.key}"${f.required?" class='required'":""}>`;
+          f.options.forEach(opt=>html+=`<option value="${opt.v}">${opt.t}</option>`);
+          html += `</select>`;
+        } else if(f.type === "number") {
+          html += `<input type="number" id="add_${f.key}"${f.required?" class='required'":""} ${f.min?`min="${f.min}"`:''} ${f.max?`max="${f.max}"`:''}>`;
+        } else if(f.type === "text") {
+          html += `<input type="text" id="add_${f.key}"${f.required?" class='required'":""}>`;
+        } else {
+          html += `<input id="add_${f.key}"${f.required?" class='required'":""}>`;
+        }
+        html += `</label></div>`;
       }
-      let { error } = await client.from(table).insert([data]);
-      if (error) setMsg('寫入失敗：' + error.message, true);
-      else {
-        setMsg('✅ 新增成功！');
-        clearAddForm();
-        await loadData();
-      }
-      return false;
+      html += `</div>`;
     }
-    function clearAddForm() {
-      document.querySelectorAll('input[id^=add_], textarea[id^=add_]').forEach(el => el.value = '');
-      document.getElementById('add_effect_type').selectedIndex = 0;
-      document.getElementById('add_target_faction').selectedIndex = 0;
-      document.getElementById('add_move_target_faction').selectedIndex = 0;
-      document.getElementById('add_move_range').selectedIndex = 0;
-      document.getElementById('add_debuff_type').selectedIndex = 0;
-      document.getElementById('add_debuff_applied_to').selectedIndex = 0;
-      document.getElementById('add_max_targets').value = '1';
-      document.getElementById('add_move_max_targets').value = '1';
-    }
+    html += `<div class="form-actions"><button type="submit" class="submit-btn">送出</button>
+      <button type="button" class="clear-btn" onclick="clearAddForm()">清除</button></div></form>`;
+    document.getElementById('add-form-block').innerHTML = html;
+  }
+  function clearAddForm() {
+    document.querySelectorAll('#add-form input, #add-form select').forEach(el=>{ el.value=""; if(el.type==="select-one"&&el.options.length>0) el.selectedIndex=0; });
+  }
 
-    // ====== 表格功能同前一版 ======
-    function setMsg(msg, err) {
-      document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
-    }
-    let filteredData = [], rawData = [], currentPage = 1, sortKey = null, sortAsc = true, editingCell = null;
-    async function loadData() {
-      setMsg("資料載入中...");
-      const table = TABLES[currentTab].table;
-      let { data, error } = await client.from(table).select("*").order(TABLES[currentTab].fields[0].key, { ascending: true });
-      if (error) { setMsg("資料讀取失敗：" + error.message, true); return; }
-      rawData = data || [];
-      filteredData = rawData;
-      renderTable();
-      setMsg('');
-    }
-    function searchTable() {
-      const kw = document.getElementById('search').value.trim().toLowerCase();
-      if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
-      filteredData = rawData.filter(row =>
-        Object.values(row).join(' ').toLowerCase().includes(kw)
-      );
-      currentPage = 1;
-      renderTable();
-    }
-    function sortBy(key) {
-      if (sortKey === key) sortAsc = !sortAsc;
-      else { sortKey = key; sortAsc = true; }
-      filteredData.sort((a, b) => {
-        if (a[key] == null) return 1;
-        if (b[key] == null) return -1;
-        if (typeof a[key] === "number" && typeof b[key] === "number")
-          return sortAsc ? a[key] - b[key] : b[key] - a[key];
-        return sortAsc ? String(a[key]).localeCompare(b[key]) : String(b[key]).localeCompare(a[key]);
-      });
-      renderTable();
-    }
-    function renderTable() {
-      const fields = TABLES[currentTab].fields;
-      const pk = TABLES[currentTab].pk;
-      const table = document.getElementById('data-table');
-      const start = (currentPage - 1) * PAGE_SIZE;
-      const pageRows = filteredData.slice(start, start + PAGE_SIZE);
-
-      let th = '<tr>' + fields.map(f =>
-        `<th onclick="sortBy('${f.key}')">${f.name}${sortKey === f.key ? (sortAsc ? ' ▲' : ' ▼') : ''}</th>`
-      ).join('') + '<th>操作</th></tr>';
-      let trs = pageRows.map((row, ridx) => {
-        return `<tr>` + fields.map(f => {
-          const val = row[f.key] ?? "";
-          if (f.editable && editingCell && editingCell.id === row[pk] && editingCell.key === f.key) {
-            return `<td class="editing"><input type="text" value="${val}" 
-              onblur="endEdit('${row[pk]}','${f.key}',this.value)" 
-              onkeydown="if(event.key==='Enter'){endEdit('${row[pk]}','${f.key}',this.value)}"></td>`;
-          } else if (f.editable) {
-            return `<td onclick="startEdit('${row[pk]}','${f.key}')">${val || '<span style=\'color:#aaa\'>[空]</span>'}</td>`;
-          } else {
-            return `<td>${val || ''}</td>`;
-          }
-        }).join('') +
-        `<td>
-          <button class="btn-del" onclick="delRow('${row[pk]}')">刪除</button>
-        </td></tr>`;
-      }).join('');
-      table.innerHTML = th + trs;
-      renderPagination();
-    }
-    function renderPagination() {
-      const pageCount = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
-      let html = '';
-      for (let i = 1; i <= pageCount; i++) {
-        html += `<button ${i === currentPage ? 'class="active"' : ''} onclick="gotoPage(${i})">${i}</button>`;
+  // ========== 新增資料 ==========
+  async function handleAdd(e) {
+    e.preventDefault();
+    const fields = TABLES[currentTab].fields;
+    let data = {};
+    let hasErr = false;
+    fields.forEach(f => {
+      let val = document.getElementById('add_'+f.key)?.value?.trim();
+      if(f.type==="number" && val!=="") val = Number(val);
+      if(f.required && (val==="" || val==null || (f.type==="number" && isNaN(val)))) {
+        document.getElementById('add_'+f.key).classList.add('required');
+        hasErr = true;
+      } else {
+        document.getElementById('add_'+f.key).classList.remove('required');
       }
-      document.getElementById('pagination').innerHTML = html;
-    }
-    function gotoPage(p) { currentPage = p; renderTable(); }
-    function startEdit(id, key) {
-      editingCell = { id, key }; renderTable();
-      setTimeout(() => {
-        let el = document.querySelector('td.editing input, td.editing textarea');
-        if (el) el.focus();
-      }, 80);
-    }
-    async function endEdit(id, key, value) {
-      const fields = TABLES[currentTab].fields;
-      const pk = TABLES[currentTab].pk;
-      editingCell = null;
-      let row = rawData.find(r => String(r[pk]) === String(id));
-      if (!row) return renderTable();
-      if (row[key] == value) return renderTable();
-      let updateObj = {};
-      updateObj[key] = (fields.find(f => f.key === key) && typeof row[key] === "number") ? Number(value) : value;
-      let { error } = await client.from(TABLES[currentTab].table).update(updateObj).eq(pk, id);
-      if (error) setMsg('⚠️ 修改失敗: ' + error.message, true);
-      else setMsg('✔️ 已修改');
+      data[f.key] = (val==="" ? null : val);
+    });
+    if(hasErr) { setMsg('有必填欄位未填',true); return false; }
+    let { error } = await client.from(TABLES[currentTab].table).insert([data]);
+    if (error) setMsg('寫入失敗：' + error.message, true);
+    else {
+      setMsg('✅ 新增成功！');
+      clearAddForm();
       await loadData();
     }
-    async function delRow(id) {
-      if (!confirm('確定要刪除這筆資料嗎？刪了不可回復！')) return;
-      const pk = TABLES[currentTab].pk;
-      let { error } = await client.from(TABLES[currentTab].table).delete().eq(pk, id);
-      if (error) setMsg('⚠️ 刪除失敗: ' + error.message, true);
-      else setMsg('已刪除！');
-      await loadData();
+    return false;
+  }
+
+  // ========== 查詢/排序/分頁/編輯/刪除 與之前相同 ==========
+  function setMsg(msg, err) {
+    document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
+  }
+  async function loadData() {
+    setMsg("資料載入中...");
+    const table = TABLES[currentTab].table;
+    let { data, error } = await client.from(table).select("*").order(TABLES[currentTab].fields[0].key, { ascending: true });
+    if (error) { setMsg("資料讀取失敗：" + error.message, true); return; }
+    rawData = data || [];
+    filteredData = rawData;
+    renderTable();
+    setMsg('');
+  }
+  function searchTable() {
+    const kw = document.getElementById('search').value.trim().toLowerCase();
+    if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
+    filteredData = rawData.filter(row =>
+      Object.values(row).join(' ').toLowerCase().includes(kw)
+    );
+    currentPage = 1;
+    renderTable();
+  }
+  function sortBy(key) {
+    if (sortKey === key) sortAsc = !sortAsc;
+    else { sortKey = key; sortAsc = true; }
+    filteredData.sort((a, b) => {
+      if (a[key] == null) return 1;
+      if (b[key] == null) return -1;
+      if (typeof a[key] === "number" && typeof b[key] === "number")
+        return sortAsc ? a[key] - b[key] : b[key] - a[key];
+      return sortAsc ? String(a[key]).localeCompare(b[key]) : String(b[key]).localeCompare(a[key]);
+    });
+    renderTable();
+  }
+  function renderTable() {
+    const fields = TABLES[currentTab].fields;
+    const pk = TABLES[currentTab].pk;
+    const table = document.getElementById('data-table');
+    const start = (currentPage - 1) * PAGE_SIZE;
+    const pageRows = filteredData.slice(start, start + PAGE_SIZE);
+
+    let th = '<tr>' + fields.map(f =>
+      `<th onclick="sortBy('${f.key}')">${f.name}${sortKey === f.key ? (sortAsc ? ' ▲' : ' ▼') : ''}</th>`
+    ).join('') + '<th>操作</th></tr>';
+    let trs = pageRows.map((row, ridx) => {
+      return `<tr>` + fields.map(f => {
+        const val = row[f.key] ?? "";
+        if ((f.type==="text"||f.type==="number") && editingCell && editingCell.id === row[pk] && editingCell.key === f.key) {
+          return `<td class="editing"><input type="${f.type}" value="${val}" 
+            onblur="endEdit('${row[pk]}','${f.key}',this.value)" 
+            onkeydown="if(event.key==='Enter'){endEdit('${row[pk]}','${f.key}',this.value)}"></td>`;
+        } else if ((f.type==="text"||f.type==="number")) {
+          return `<td onclick="startEdit('${row[pk]}','${f.key}')">${val || '<span style=\'color:#aaa\'>[空]</span>'}</td>`;
+        } else {
+          return `<td>${(f.options ? (f.options.find(opt=>opt.v==val)?.t??'') : val) || ''}</td>`;
+        }
+      }).join('') +
+      `<td>
+        <button class="btn-del" onclick="delRow('${row[pk]}')">刪除</button>
+      </td></tr>`;
+    }).join('');
+    table.innerHTML = th + trs;
+    renderPagination();
+  }
+  function renderPagination() {
+    const pageCount = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
+    let html = '';
+    for (let i = 1; i <= pageCount; i++) {
+      html += `<button ${i === currentPage ? 'class="active"' : ''} onclick="gotoPage(${i})">${i}</button>`;
     }
-  </script>
+    document.getElementById('pagination').innerHTML = html;
+  }
+  function gotoPage(p) { currentPage = p; renderTable(); }
+  function startEdit(id, key) {
+    editingCell = { id, key }; renderTable();
+    setTimeout(() => {
+      let el = document.querySelector('td.editing input, td.editing textarea');
+      if (el) el.focus();
+    }, 80);
+  }
+  async function endEdit(id, key, value) {
+    const fields = TABLES[currentTab].fields;
+    const pk = TABLES[currentTab].pk;
+    editingCell = null;
+    let row = rawData.find(r => String(r[pk]) === String(id));
+    if (!row) return renderTable();
+    if (row[key] == value) return renderTable();
+    let updateObj = {};
+    updateObj[key] = (fields.find(f => f.key === key) && typeof row[key] === "number") ? Number(value) : value;
+    let { error } = await client.from(TABLES[currentTab].table).update(updateObj).eq(pk, id);
+    if (error) setMsg('⚠️ 修改失敗: ' + error.message, true);
+    else setMsg('✔️ 已修改');
+    await loadData();
+  }
+  async function delRow(id) {
+    if (!confirm('確定要刪除這筆資料嗎？刪了不可回復！')) return;
+    const pk = TABLES[currentTab].pk;
+    let { error } = await client.from(TABLES[currentTab].table).delete().eq(pk, id);
+    if (error) setMsg('⚠️ 刪除失敗: ' + error.message, true);
+    else setMsg('已刪除！');
+    await loadData();
+  }
+
+  // 首次載入
+  document.addEventListener('DOMContentLoaded', function () {
+    renderTabs();
+    renderAddForm();
+    loadData();
+  });
+  window.searchTable = searchTable;
+  window.sortBy = sortBy;
+  window.gotoPage = gotoPage;
+  window.startEdit = startEdit;
+  window.endEdit = endEdit;
+  window.delRow = delRow;
+  window.clearAddForm = clearAddForm;
+</script>
 </body>
 </html>

@@ -74,12 +74,12 @@
         { key: "effect_name", name: "名稱", type: "text", required: true },
         { key: "description", name: "描述", type: "text", required: true },
         { key: "effect_type", name: "職業類型", type: "select", required: true, options: [
-          {v:"attack",t:"攻擊用"}, {v:"attack_only",t:"專攻限定"}, {v:"heal",t:"補血用"}, {v:"heal_only",t:"專補限定"},
-          {v:"tank",t:"坦用"}, {v:"tank_only",t:"專坦限定"}, {v:"buff",t:"增益"}, {v:"buff_only",t:"專增益限定"},
-          {v:"debuff",t:"妨礙"}, {v:"debuff_only",t:"專妨礙限定"}
+          {v:"attack",t:"攻擊"}, {v:"attack_only",t:"專攻"}, {v:"heal",t:"補師"}, {v:"heal_only",t:"專補"},
+          {v:"tank",t:"坦"}, {v:"tank_only",t:"專坦"}, {v:"buff",t:"增益"}, {v:"buff_only",t:"專增益"},
+          {v:"debuff",t:"妨礙"}, {v:"debuff_only",t:"專妨礙"}
         ]},
         { key: "target_faction", name: "對象", type: "select", required: true, options: [
-          {v:"enemy",t:"敵方"}, {v:"ally",t:"隊友"}, {v:"self",t:"自己"}, {v:"team",t:"隊友全體"}
+          {v:"enemy",t:"敵方"}, {v:"ally",t:"隊友"}, {v:"self",t:"自己"}
         ]},
         { key: "max_targets", name: "人數", type: "number", required: true, min:1, max:3 },
         { key: "score", name: "分數", type: "number", required: true },
@@ -97,7 +97,7 @@
           {v:"enemy",t:"敵方"}, {v:"ally",t:"隊友"}, {v:"self",t:"自己"}, {v:"team",t:"隊友全體"}
         ]},
         { key: "range", name: "施放區域", type: "select", required: true, options: [
-          {v:"same_zone",t:"同區"}, {v:"cross_zone",t:"跨區"}, {v:"all_zone",t:"全區"}
+          {v:"same_zone",t:"同區"}, {v:"cross_zone",t:"跨區"}
         ]},
         { key: "max_targets", name: "人數", type: "number", required: true, min:1, max:3 },
         { key: "extra_cd", name: "冷卻", type: "number", required: false },

@@ -9,15 +9,15 @@
     .container { max-width: 1080px; margin: auto; background: white; padding: 2rem; border-radius: 1.3rem; box-shadow: 0 2px 16px #0001; }
     h2 { text-align: center; margin-bottom: 1.5rem; }
     .tabs { display: flex; gap: 1.2em; margin-bottom: 1.5em; }
-    .tab { cursor: pointer; padding: 0.6em 2em; border-radius: 2em; background: #eef2fa; color: #1d4076; font-weight: 600; }
+    .tab { cursor: pointer; padding: 0.6em 2em; border-radius: 2em; background: #eef2fa; color: #1d4076; font-weight: 600; transition: background .18s;}
     .tab.active { background: #1767a0; color: #fff; }
-    .form-row { display: flex; flex-wrap: wrap; gap: 1em; margin-bottom: 1.1em; align-items: flex-end; }
-    .form-row label { font-weight: 700; margin-right: 0.5em;}
-    .form-row input, .form-row select, .form-row textarea { padding: 0.45em 0.5em; border: 1px solid #ccc; border-radius: 0.5em; }
-    .form-row input[type=\"number\"] { width: 80px; }
-    .form-row input[type=\"text\"], .form-row select, .form-row textarea { min-width: 120px;}
-    .form-row textarea { min-width: 180px; min-height: 1.8em; resize: vertical;}
-    .form-row .submit-btn { background: #1767a0; color: #fff; border: none; border-radius: 0.5em; padding: 0.5em 1.1em; font-weight: 600; cursor: pointer;}
+    .form-wrap { margin-bottom: 2em; }
+    .form-row { display: flex; flex-wrap: wrap; gap: 1.2em; }
+    .form-group { flex: 1 1 260px; min-width: 160px; display: flex; flex-direction: column; }
+    .form-group label { font-weight: 700; margin-bottom: 0.2em; }
+    .form-group input, .form-group select, .form-group textarea { padding: 0.44em 0.5em; border: 1px solid #ccc; border-radius: 0.5em; }
+    .form-group textarea { min-height: 2.3em; resize: vertical; }
+    .submit-btn { background: #1767a0; color: #fff; border: none; border-radius: 0.5em; padding: 0.6em 1.5em; font-weight: 600; cursor: pointer; align-self: flex-end; margin-top: 0.8em;}
     .search-row { display: flex; gap: 1em; align-items: center; margin-bottom: 1.2em; }
     .search-row input { flex: 1; padding: 0.5em; border-radius: 0.7em; border: 1px solid #ccc; }
     .table-wrap { overflow-x: auto; }
@@ -31,10 +31,11 @@
     .pagination button { margin: 0 0.25em; border: none; background: #d7e4f5; color: #1767a0; padding: 0.3em 0.7em; border-radius: 0.5em; font-weight: 600; cursor: pointer;}
     .pagination button.active { background: #1767a0; color: #fff; }
     .msg { min-height: 1.5em; margin-bottom: 0.8em; }
-    @media (max-width: 820px) {
-      .form-row { flex-direction: column; gap: 0.2em;}
+    @media (max-width: 900px) {
+      .form-row { flex-direction: column; gap: 0.3em;}
       .tabs { flex-direction: column; gap: 0.4em;}
-      th, td { font-size: 0.92em; }
+      th, td { font-size: 0.95em; }
+      .form-group { min-width: 0; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -42,90 +43,106 @@
 <body>
   <div class="container">
     <h2>技能管理後台</h2>
-    <div class="tabs">
-      <div class="tab active" id="tab-skill" onclick="switchTab('skill')">技能效果</div>
-      <div class="tab" id="tab-move" onclick="switchTab('move')">移動技能效果</div>
-      <div class="tab" id="tab-debuff" onclick="switchTab('debuff')">技能副作用</div>
+    <div class="tabs" id="tabs">
+      <div class="tab active" data-tab="skill">技能效果</div>
+      <div class="tab" data-tab="move">移動技能效果</div>
+      <div class="tab" data-tab="debuff">技能副作用</div>
     </div>
 
-    <!-- 新增資料表單（依 Tab 切換顯示） -->
-    <form id="add-skill-form" class="form-row" onsubmit="return handleAdd(event)">
-      <!-- 技能效果 -->
-      <div id="add-skill" class="add-form-block">
-        <label>名稱 <input type="text" id="add_effect_name"></label>
-        <label>描述 <input type="text" id="add_description"></label>
-        <label>職業類型
-          <select id="add_effect_type">
-            <option value="attack">攻擊用</option><option value="attack_only">專攻限定</option>
-            <option value="heal">補血用</option><option value="heal_only">專補限定</option>
-            <option value="tank">坦用</option><option value="tank_only">專坦限定</option>
-            <option value="buff">增益</option><option value="buff_only">專增益限定</option>
-            <option value="debuff">妨礙</option><option value="debuff_only">專妨礙限定</option>
-          </select>
-        </label>
-        <label>對象
-          <select id="add_target_faction">
-            <option value="enemy">敵方</option>
-            <option value="ally">隊友</option>
-            <option value="self">自己</option>
-            <option value="team">隊友全體</option>
-          </select>
-        </label>
-        <label>人數 <input type="number" id="add_max_targets" min="1" max="3" value="1"></label>
-        <label>分數 <input type="number" id="add_score"></label>
-        <label>冷卻 <input type="number" id="add_extra_cd"></label>
-        <label>顯示代碼 <input type="text" id="add_effect_id_code" placeholder="可空"></label>
-        <label>邏輯碼 <input type="text" id="add_effect_code" placeholder="可空"></label>
-      </div>
-      <!-- 移動技能效果 -->
-      <div id="add-move" class="add-form-block" style="display:none">
-        <label>名稱 <input type="text" id="add_move_name"></label>
-        <label>描述 <input type="text" id="add_move_description"></label>
-        <label>對象
-          <select id="add_move_target_faction">
-            <option value="enemy">敵方</option>
-            <option value="ally">隊友</option>
-            <option value="self">自己</option>
-            <option value="team">隊友全體</option>
-          </select>
-        </label>
-        <label>施放區域
-          <select id="add_move_range">
-            <option value="same_zone">同區</option>
-            <option value="cross_zone">跨區</option>
-            <option value="all_zone">全區</option>
-          </select>
-        </label>
-        <label>人數 <input type="number" id="add_move_max_targets" min="1" max="3" value="1"></label>
-        <label>冷卻 <input type="number" id="add_move_extra_cd"></label>
-        <label>顯示代碼 <input type="text" id="add_move_effect_id_code" placeholder="可空"></label>
-        <label>邏輯碼 <input type="text" id="add_move_effect_code" placeholder="可空"></label>
-      </div>
-      <!-- 技能副作用 -->
-      <div id="add-debuff" class="add-form-block" style="display:none">
-        <label>名稱 <input type="text" id="add_debuff_name"></label>
-        <label>描述 <input type="text" id="add_debuff_description"></label>
-        <label>分類
-          <select id="add_debuff_type">
-            <option value="cc">控場</option><option value="cd">冷卻</option>
-            <option value="pass">行動跳過</option><option value="debuff">一般負面狀態</option>
-            <option value="bleed">損血</option>
-          </select>
-        </label>
-        <label>抵銷分數 <input type="number" id="add_debuff_offset_score"></label>
-        <label>冷卻 <input type="number" id="add_debuff_extra_cd"></label>
-        <label>套用對象
-          <select id="add_debuff_applied_to">
-            <option value="self">自己</option>
-            <option value="toally">技能施放對象</option>
-          </select>
-        </label>
-        <label>顯示代碼 <input type="text" id="add_debuff_effect_id_code" placeholder="可空"></label>
-        <label>邏輯碼 <input type="text" id="add_debuff_effect_code" placeholder="可空"></label>
-      </div>
-      <button type="submit" class="submit-btn">送出</button>
-    </form>
-
+    <div class="form-wrap">
+      <form id="add-skill-form" class="form-block" onsubmit="return handleAdd(event)">
+        <!-- 技能效果 -->
+        <div id="add-skill" class="add-form-block">
+          <div class="form-row">
+            <div class="form-group"><label>名稱<input type="text" id="add_effect_name"></label></div>
+            <div class="form-group"><label>分數<input type="number" id="add_score"></label></div>
+            <div class="form-group"><label>職業類型
+              <select id="add_effect_type">
+                <option value="attack">攻擊用</option><option value="attack_only">專攻限定</option>
+                <option value="heal">補血用</option><option value="heal_only">專補限定</option>
+                <option value="tank">坦用</option><option value="tank_only">專坦限定</option>
+                <option value="buff">增益</option><option value="buff_only">專增益限定</option>
+                <option value="debuff">妨礙</option><option value="debuff_only">專妨礙限定</option>
+              </select></label></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>描述<input type="text" id="add_description"></label></div>
+            <div class="form-group"><label>對象
+              <select id="add_target_faction">
+                <option value="enemy">敵方</option>
+                <option value="ally">隊友</option>
+                <option value="self">自己</option>
+                <option value="team">隊友全體</option>
+              </select></label></div>
+            <div class="form-group"><label>最大人數<input type="number" id="add_max_targets" min="1" max="3" value="1"></label></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>冷卻<input type="number" id="add_extra_cd"></label></div>
+            <div class="form-group"><label>顯示代碼<input type="text" id="add_effect_id_code" placeholder="可空"></label></div>
+            <div class="form-group"><label>邏輯碼<input type="text" id="add_effect_code" placeholder="可空"></label></div>
+            <button type="submit" class="submit-btn">送出</button>
+          </div>
+        </div>
+        <!-- 移動技能效果 -->
+        <div id="add-move" class="add-form-block" style="display:none">
+          <div class="form-row">
+            <div class="form-group"><label>名稱<input type="text" id="add_move_name"></label></div>
+            <div class="form-group"><label>施放區域
+              <select id="add_move_range">
+                <option value="same_zone">同區</option>
+                <option value="cross_zone">跨區</option>
+                <option value="all_zone">全區</option>
+              </select></label></div>
+            <div class="form-group"><label>對象
+              <select id="add_move_target_faction">
+                <option value="enemy">敵方</option>
+                <option value="ally">隊友</option>
+                <option value="self">自己</option>
+                <option value="team">隊友全體</option>
+              </select></label></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>描述<input type="text" id="add_move_description"></label></div>
+            <div class="form-group"><label>最大人數<input type="number" id="add_move_max_targets" min="1" max="3" value="1"></label></div>
+            <div class="form-group"><label>冷卻<input type="number" id="add_move_extra_cd"></label></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>顯示代碼<input type="text" id="add_move_effect_id_code" placeholder="可空"></label></div>
+            <div class="form-group"><label>邏輯碼<input type="text" id="add_move_effect_code" placeholder="可空"></label></div>
+            <div style="flex:1"></div>
+            <button type="submit" class="submit-btn">送出</button>
+          </div>
+        </div>
+        <!-- 技能副作用 -->
+        <div id="add-debuff" class="add-form-block" style="display:none">
+          <div class="form-row">
+            <div class="form-group"><label>名稱<input type="text" id="add_debuff_name"></label></div>
+            <div class="form-group"><label>分類
+              <select id="add_debuff_type">
+                <option value="cc">控場</option><option value="cd">冷卻</option>
+                <option value="pass">行動跳過</option><option value="debuff">一般負面狀態</option>
+                <option value="bleed">損血</option>
+              </select></label></div>
+            <div class="form-group"><label>抵銷分數<input type="number" id="add_debuff_offset_score"></label></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>描述<input type="text" id="add_debuff_description"></label></div>
+            <div class="form-group"><label>冷卻<input type="number" id="add_debuff_extra_cd"></label></div>
+            <div class="form-group"><label>套用對象
+              <select id="add_debuff_applied_to">
+                <option value="self">自己</option>
+                <option value="toally">技能施放對象</option>
+              </select></label></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>顯示代碼<input type="text" id="add_debuff_effect_id_code" placeholder="可空"></label></div>
+            <div class="form-group"><label>邏輯碼<input type="text" id="add_debuff_effect_code" placeholder="可空"></label></div>
+            <div style="flex:1"></div>
+            <button type="submit" class="submit-btn">送出</button>
+          </div>
+        </div>
+      </form>
+    </div>
     <div class="search-row">
       <input id="search" type="text" placeholder="搜尋名稱、描述、顯示代碼、邏輯碼…" oninput="searchTable()">
       <span class="msg" id="msg"></span>
@@ -138,13 +155,12 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
-    // ====== Supabase 設定 ======
+    // Supabase 設定
     const client = window.supabase.createClient(
       'https://wfhwhvodgikpducrhgda.supabase.co',
       'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
     );
 
-    // ============ 配置 =============
     const PAGE_SIZE = 10;
     const TABLES = {
       skill: {
@@ -200,15 +216,28 @@
     let sortAsc = true;
     let editingCell = null;
 
-    // ========== Tab 切換 ==========
+    // 用 JS 綁定 tab 切換
+    document.addEventListener('DOMContentLoaded', function () {
+      // 綁定 tab 切換
+      document.querySelectorAll('.tab').forEach(tabBtn => {
+        tabBtn.onclick = function() {
+          document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+          tabBtn.classList.add('active');
+          switchTab(tabBtn.dataset.tab);
+        }
+      });
+      // 初始顯示
+      document.querySelectorAll('.add-form-block').forEach(el => el.style.display = 'none');
+      document.getElementById('add-skill').style.display = '';
+      loadData();
+    });
+
     function switchTab(tab) {
       currentTab = tab;
-      document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
-      document.getElementById('tab-' + tab).classList.add('active');
-      document.getElementById('search').value = '';
       // 顯示對應新增表單
       document.querySelectorAll('.add-form-block').forEach(el => el.style.display = 'none');
       document.getElementById('add-' + tab).style.display = '';
+      document.getElementById('search').value = '';
       currentPage = 1;
       loadData();
     }
@@ -216,8 +245,7 @@
     // ========== 新增資料 ==========
     async function handleAdd(e) {
       e.preventDefault();
-      let data = {};
-      let table = TABLES[currentTab].table;
+      let data = {}, table = TABLES[currentTab].table;
       if (currentTab === 'skill') {
         data = {
           effect_name: document.getElementById('add_effect_name').value.trim(),
@@ -266,9 +294,7 @@
       return false;
     }
     function clearAddForm() {
-      // 將所有 add_ 開頭的 input 清空
       document.querySelectorAll('input[id^=add_], textarea[id^=add_]').forEach(el => el.value = '');
-      // 重設 select
       document.getElementById('add_effect_type').selectedIndex = 0;
       document.getElementById('add_target_faction').selectedIndex = 0;
       document.getElementById('add_move_target_faction').selectedIndex = 0;
@@ -279,7 +305,10 @@
       document.getElementById('add_move_max_targets').value = '1';
     }
 
-    // ========== 載入、查詢、排序、分頁、編輯、刪除 ==========
+    // ====== 表格功能同前一版 ======
+    function setMsg(msg, err) {
+      document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
+    }
     let filteredData = [], rawData = [], currentPage = 1, sortKey = null, sortAsc = true, editingCell = null;
     async function loadData() {
       setMsg("資料載入中...");
@@ -380,22 +409,6 @@
       else setMsg('已刪除！');
       await loadData();
     }
-    function setMsg(msg, err) {
-      document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
-    }
-    // 首次載入
-    document.addEventListener('DOMContentLoaded', function () {
-      document.querySelectorAll('.add-form-block').forEach(el => el.style.display = 'none');
-      document.getElementById('add-skill').style.display = '';
-      loadData();
-    });
-    window.switchTab = switchTab;
-    window.searchTable = searchTable;
-    window.sortBy = sortBy;
-    window.gotoPage = gotoPage;
-    window.startEdit = startEdit;
-    window.endEdit = endEdit;
-    window.delRow = delRow;
   </script>
 </body>
 </html>

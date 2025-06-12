@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>謝爾夏｜技能管理後台</title>
+  <title>謝爾夏｜技能管理後台（三表整合）</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; background: #f4f7fa; margin: 0; padding: 2rem; }
@@ -373,7 +373,7 @@
       await loadData();
     }
     async function delRow(id) {
-      if (!confirm('確定要刪除這筆資料喵？刪錯笑你！')) return;
+      if (!confirm('確定要刪除這筆資料嗎？刪了不可回復！')) return;
       const pk = TABLES[currentTab].pk;
       let { error } = await client.from(TABLES[currentTab].table).delete().eq(pk, id);
       if (error) setMsg('⚠️ 刪除失敗: ' + error.message, true);

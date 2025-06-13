@@ -83,7 +83,7 @@
         ]},
         { key: "max_targets", name: "人數", type: "number", required: true, min:1, max:5 },
         { key: "score", name: "分數", type: "number", required: true },
-        { key: "extra_cd", name: "冷卻", type: "number", required: false },
+        { key: "extra_cd", name: "cd ", type: "number", required: false },
         { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
         { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
       ]
@@ -100,7 +100,7 @@
           {v:"same_zone",t:"同區"}, {v:"cross_zone",t:"跨區"}
         ]},
         { key: "max_targets", name: "人數", type: "select", required: true, options: [ {v:1, t:"1"} ] }, 
-        { key: "extra_cd", name: "冷卻", type: "number", required: false },
+        { key: "extra_cd", name: "cd ", type: "number", required: false },
         { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
         { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
       ]
@@ -111,7 +111,7 @@
         { key: "debuff_name", name: "名稱", type: "text", required: true },
         { key: "description", name: "描述", type: "text", required: true },
         { key: "debuff_type", name: "分類", type: "select", required: true, options: [
-          {v:"cc",t:"控場"}, {v:"cd",t:"冷卻"}, {v:"pass",t:"行動機會-1"}, {v:"debuff",t:"一般負面狀態"}, {v:"bleed",t:"損血"}
+          {v:"cc",t:"控場"}, {v:"cd",t:"cd "}, {v:"pass",t:"行動機會-1"}, {v:"debuff",t:"一般負面狀態"}, {v:"bleed",t:"損血"}
         ]},
         { key: "offset_score", name: "抵銷分數", type: "number", required: true },
         { key: "applied_to", name: "套用對象", type: "select", required: true, options: [

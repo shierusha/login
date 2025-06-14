@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>謝爾夏｜管理者後台</title>
+  <style>
+    body { background: #f6f8fb; font-family: 'Noto Sans TC',sans-serif; margin: 0; }
+    .dash-main { max-width: 600px; margin: 60px auto; background: #fff; border-radius: 1.5em; box-shadow: 0 4px 32px #0001; padding: 2.5em 2em 2em 2em;}
+    h2 { color: #133d6b; font-size: 2rem; margin-top: 0; }
+    .admin-menu { display: flex; flex-direction: column; gap: 1.5em; margin: 2em 0;}
+    .admin-btn {
+      padding: 1em 2em; border: none; background: #2564a5; color: #fff;
+      font-size: 1.2em; border-radius: 1em; cursor: pointer; transition:.18s;
+      box-shadow:0 2px 8px #2564a52a;
+    }
+    .admin-btn:hover { background: #154476; }
+    .logout-btn { background: #999; color: #fff;}
+    .logout-btn:hover { background: #444;}
+  </style>
+</head>
+<body>
+  <div class="dash-main">
+    <h2 id="admin-welcome">歡迎管理者！</h2>
+    <div class="admin-menu">
+      <button class="admin-btn" onclick="location.href='player_manage.html'">玩家／角色管理</button>
+      <button class="admin-btn" onclick="location.href='skill_admin.html'">技能效果管理</button>
+      <button class="admin-btn" onclick="location.href='create_char.html'">創角</button>
+      <button class="admin-btn logout-btn" onclick="logout()">登出</button>
+    </div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script>
+    // Supabase 初始化
+    const client = window.supabase.createClient(
+      'https://wfhwhvodgikpducrhgda.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
+    );
+    // 取得登入資訊，確認是管理員
+    async function checkAdmin() {
+      let { data: { user } } = await client.auth.getUser();
+      if (!user) {
+        alert('請先登入！'); location.href='login.html'; return;
+      }
+      // 抓 players 表角色
+      let { data, error } = await client.from('players').select('username,role').eq('email', user.email).single();
+      if (error || !data) {
+        alert('帳號資料錯誤，請重新登入'); location.href='login.html'; return;
+      }
+      if (data.role !== 'admin') {
+        alert('你不是管理員，無權進入'); location.href='login.html'; return;
+      }
+      document.getElementById('admin-welcome').textContent = `歡迎 ${data.username} 管理者`;
+    }
+    // 登出
+    async function logout() {
+      await client.auth.signOut();
+      location.href = 'login.html';
+    }
+    // 頁面載入檢查
+    checkAdmin();
+  </script>
+</body>
+</html>

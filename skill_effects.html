@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8">
-  <title>謝爾夏｜技能管理後台</title>
+  <title>謝爾夏｜技能效果管理後台</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body { font-family: 'Noto Sans TC', sans-serif; background: #f4f7fa; margin: 0; padding: 2rem; }
@@ -114,9 +114,6 @@
           {v:"cc",t:"控場"}, {v:"cd",t:"cd "}, {v:"pass",t:"行動機會-1"}, {v:"debuff",t:"一般負面狀態"}, {v:"bleed",t:"損血"}
         ]},
         { key: "offset_score", name: "抵銷分數", type: "number", required: true },
-        { key: "applied_to", name: "套用對象", type: "select", required: true, options: [
-          {v:"self",t:"自己"}, {v:"toally",t:"技能施放對象(限單體)"}
-        ]},
         { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
         { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
       ]

@@ -26,14 +26,14 @@
     async function checkAdmin() {
       let { data: { user } } = await client.auth.getUser();
       if (!user) {
-        alert('請先登入！'); location.href='login.html'; return;
+        location.href='login.html'; return;
       }
       let { data, error } = await client.from('players').select('username,role').eq('email', user.email).single();
       if (error || !data) {
-        alert('帳號資料錯誤，請重新登入'); location.href='login.html'; return;
+        location.href='login.html'; return;
       }
       if (data.role !== 'admin') {
-        alert('你不是管理員，無權進入'); location.href='login.html'; return;
+        location.href='login.html'; return;
       }
       document.getElementById('admin-welcome').textContent = `歡迎偉大的 ${data.username} 管理者`;
     }

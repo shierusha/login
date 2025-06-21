@@ -180,6 +180,8 @@ async function signIn() {
     return;
   }
   localStorage.setItem('player_id', user.id);
+
+  // 查 players 資料表取得身份
   let player, playerError;
   try {
     ({ data: player, error: playerError } = await client
@@ -198,10 +200,19 @@ async function signIn() {
     return;
   }
   localStorage.setItem('player_username', player.username);
-  setTimeout(() => {
-    window.location.href = 'https://shierusha.github.io/create-student/charlist.html';
-  }, 600);
+
+  // 依照身份自動導頁
+  if (player.role === 'admin') {
+    setTimeout(() => {
+      window.location.href = 'admin.html'; // 這裡改成你管理頁網址
+    }, 600);
+  } else {
+    setTimeout(() => {
+      window.location.href = 'https://shierusha.github.io/create-student/charlist.html'; // 這裡是玩家首頁
+    }, 600);
+  }
 }
+
 
 // 初始化顯示登入
 document.addEventListener('DOMContentLoaded', function() {

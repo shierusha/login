@@ -35,7 +35,7 @@
       if (data.role !== 'admin') {
         alert('你不是管理員，無權進入'); location.href='login.html'; return;
       }
-      document.getElementById('admin-welcome').textContent = `歡迎 ${data.username} 管理者`;
+      document.getElementById('admin-welcome').textContent = `歡迎偉大的 ${data.username} 管理者`;
     }
     // 登出
     async function logout() {

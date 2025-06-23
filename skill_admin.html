@@ -199,26 +199,28 @@
   let currentTab = "skill", rawData = [], filteredData = [], currentPage = 1, sortKey = null, sortAsc = true, editingCell = null;
 
   // ====== 在 renderTabs 切換 tab 後記得重新渲染搜尋欄位 ======
-  function renderTabs() {
-    let html = "";
-    for(let key in TABLES) {
-      html += `<div class="tab${currentTab===key?" active":""}" data-tab="${key}">${TABLES[key].label}</div>`;
-    }
-    document.getElementById('tabs').innerHTML = html;
-    document.querySelectorAll('.tab').forEach(tabBtn => {
-      tabBtn.onclick = function() {
-        if(currentTab !== tabBtn.dataset.tab) {
-          currentTab = tabBtn.dataset.tab;
-          renderTabs();
-          renderAddForm();
-          renderSearchField(); 
-          document.getElementById('search').value = '';
-          currentPage = 1;
-          loadData();
-        }
-      };
-    });
+function renderTabs() {
+  let html = "";
+  for(let key in TABLES) {
+    html += `<div class="tab${currentTab===key?" active":""}" data-tab="${key}">${TABLES[key].label}</div>`;
   }
+  // 這裡加上返回鍵，但不要加 .tab class
+  html += `<button class="return-btn" type="button" style="margin-left:auto" onclick="location.href='admin.html'">返回管理者首頁</button>`;
+  document.getElementById('tabs').innerHTML = html;
+  document.querySelectorAll('.tab').forEach(tabBtn => {
+    tabBtn.onclick = function() {
+      if(currentTab !== tabBtn.dataset.tab) {
+        currentTab = tabBtn.dataset.tab;
+        renderTabs();
+        renderAddForm();
+        document.getElementById('search').value = '';
+        currentPage = 1;
+        loadData();
+      }
+    };
+  });
+  // 不需要為 .return-btn 綁事件，直接靠 HTML onclick 跳轉即可
+}
 
   // 動態渲染 新增表單
   function renderAddForm() {

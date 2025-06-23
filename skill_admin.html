@@ -40,13 +40,40 @@
       th, td { font-size: 0.95em; }
       .form-group { min-width: 0; }
     }
+
+.tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.2em;
+  margin-bottom: 1.3em;
+}
+.return-btn {
+  background: #eef2fa;
+  color: #1d4076;
+  border: none;
+  border-radius: 2em;
+  padding: 0.65em 2.2em;
+  font-weight: 600;
+  font-size: 1em;
+  cursor: pointer;
+  transition: background .18s;
+}
+.return-btn:hover, .return-btn:focus {
+  background: #1767a0;
+  color: #fff;
+}
+
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="container">
     <h2>技能管理後台</h2>
-    <div class="tabs" id="tabs"></div>
+    <div class="tabs-row">
+  <div class="tabs" id="tabs"></div>
+  <button class="tab return-btn" onclick="location.href='admin.html'">返回管理者首頁</button>
+</div>
     <div class="add-form-block" id="add-form-block"></div>
 <div class="search-row">
   <select id="search-field"></select>

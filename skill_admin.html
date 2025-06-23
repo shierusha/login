@@ -48,10 +48,11 @@
     <h2>技能管理後台</h2>
     <div class="tabs" id="tabs"></div>
     <div class="add-form-block" id="add-form-block"></div>
-    <div class="search-row">
-      <input id="search" type="text" placeholder="搜尋名稱、描述、顯示代碼、邏輯碼…" oninput="searchTable()">
-      <span class="msg" id="msg"></span>
-    </div>
+<div class="search-row">
+  <select id="search-field"></select>
+  <input id="search" type="text" placeholder="搜尋…" oninput="searchTable()">
+  <span class="msg" id="msg"></span>
+</div>
     <div class="table-wrap">
       <table id="data-table"></table>
     </div>
@@ -91,6 +92,28 @@
   // 權限檢查一進頁就執行
   checkAdmin();
 
+
+  // ======== 搜尋欄位設定，每個 Tab 對應 ========
+  const SEARCH_FIELDS = {
+    skill: [
+      { key: "effect_name", name: "名稱" },
+      { key: "description", name: "描述" },
+      { key: "effect_id_code", name: "顯示代碼" },
+      { key: "effect_code", name: "程式邏輯碼" }
+    ],
+    move: [
+      { key: "move_name", name: "名稱" },
+      { key: "description", name: "描述" },
+      { key: "effect_id_code", name: "顯示代碼" },
+      { key: "effect_code", name: "程式邏輯碼" }
+    ],
+    debuff: [
+      { key: "debuff_name", name: "名稱" },
+      { key: "description", name: "描述" },
+      { key: "effect_id_code", name: "顯示代碼" },
+      { key: "effect_code", name: "程式邏輯碼" }
+    ]
+  };
 
   // ============ 配置 ============
   const PAGE_SIZE = 10;
@@ -148,7 +171,7 @@
   };
   let currentTab = "skill", rawData = [], filteredData = [], currentPage = 1, sortKey = null, sortAsc = true, editingCell = null;
 
-  // 動態渲染 Tab
+  // ====== 在 renderTabs 切換 tab 後記得重新渲染搜尋欄位 ======
   function renderTabs() {
     let html = "";
     for(let key in TABLES) {
@@ -161,6 +184,7 @@
           currentTab = tabBtn.dataset.tab;
           renderTabs();
           renderAddForm();
+          renderSearchField(); 
           document.getElementById('search').value = '';
           currentPage = 1;
           loadData();
@@ -245,12 +269,20 @@
     renderTable();
     setMsg('');
   }
+
+    // ====== 新增動態渲染搜尋欄位 ======
+  function renderSearchField() {
+    const sf = SEARCH_FIELDS[currentTab] || [];
+    let html = '';
+    sf.forEach(f => html += `<option value="${f.key}">${f.name}</option>`);
+    document.getElementById('search-field').innerHTML = html;
+  }
+  // ====== 修改 searchTable，只搜尋選定欄位 ======
   function searchTable() {
+    const sf = document.getElementById('search-field').value;
     const kw = document.getElementById('search').value.trim().toLowerCase();
     if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
-    filteredData = rawData.filter(row =>
-      Object.values(row).join(' ').toLowerCase().includes(kw)
-    );
+    filteredData = rawData.filter(row => String(row[sf]??"").toLowerCase().includes(kw));
     currentPage = 1;
     renderTable();
   }
@@ -339,8 +371,10 @@
   document.addEventListener('DOMContentLoaded', function () {
     renderTabs();
     renderAddForm();
+    renderSearchField(); 
     loadData();
   });
+
   window.searchTable = searchTable;
   window.sortBy = sortBy;
   window.gotoPage = gotoPage;

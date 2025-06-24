@@ -40,30 +40,28 @@
       th, td { font-size: 0.95em; }
       .form-group { min-width: 0; }
     }
-
-.tabs-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.2em;
-  margin-bottom: 1.3em;
-}
-.return-btn {
-  background: #eef2fa;
-  color: #1d4076;
-  border: none;
-  border-radius: 2em;
-  padding: 0.65em 2.2em;
-  font-weight: 600;
-  font-size: 1em;
-  cursor: pointer;
-  transition: background .18s;
-}
-.return-btn:hover, .return-btn:focus {
-  background: #1767a0;
-  color: #fff;
-}
-
+    .tabs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.2em;
+      margin-bottom: 1.3em;
+    }
+    .return-btn {
+      background: #eef2fa;
+      color: #1d4076;
+      border: none;
+      border-radius: 2em;
+      padding: 0.65em 2.2em;
+      font-weight: 600;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background .18s;
+    }
+    .return-btn:hover, .return-btn:focus {
+      background: #1767a0;
+      color: #fff;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -71,29 +69,26 @@
   <div class="container">
     <h2>技能管理後台</h2>
     <div class="tabs-row">
-  <div class="tabs" id="tabs"></div>
-  <div class="tab" style="margin-left:0;" onclick="location.href='admin.html'">返回管理者首頁</div>
-</div>
+      <div class="tabs" id="tabs"></div>
+    </div>
     <div class="add-form-block" id="add-form-block"></div>
-<div class="search-row">
-  <select id="search-field"></select>
-  <input id="search" type="text" placeholder="搜尋…" oninput="searchTable()">
-  <span class="msg" id="msg"></span>
-</div>
+    <div class="search-row">
+      <select id="search-field"></select>
+      <input id="search" type="text" placeholder="搜尋…" oninput="searchTable()">
+      <span class="msg" id="msg"></span>
+    </div>
     <div class="table-wrap">
       <table id="data-table"></table>
     </div>
     <div class="pagination" id="pagination"></div>
   </div>
-
 <script>
   // ====== Supabase 設定 ======
   const client = window.supabase.createClient(
     'https://wfhwhvodgikpducrhgda.supabase.co',
-    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_O6nJt4v-2nq8k'
   );
-
-  // 檢查登入狀態+權限
+  // ======== 權限檢查 ========
   async function checkAdmin() {
     let { data: { user } } = await client.auth.getUser();
     if (!user) {
@@ -106,29 +101,22 @@
     if (data.role !== 'admin') {
       alert('你不是管理員，無權進入'); location.href='login.html'; return;
     }
-    // 這頁不需要歡迎語也可以不動
-    // document.getElementById('admin-welcome').textContent = `歡迎 ${data.username} 管理者`;
   }
-
-  // 登出
   async function logout() {
     await client.auth.signOut();
     location.href = 'login.html';
   }
-
-  // 權限檢查一進頁就執行
   checkAdmin();
 
-
-  // ======== 搜尋欄位設定，每個 Tab 對應 ========
-const SEARCH_FIELDS = {
-  skill: [
-    { key: "effect_name", name: "名稱" },
-    { key: "description", name: "描述" },
-    { key: "effect_type", name: "職業類型" },  
-    { key: "effect_id_code", name: "顯示代碼" },
-    { key: "effect_code", name: "程式邏輯碼" }
-  ],
+  // ======== 搜尋欄位設定 ========
+  const SEARCH_FIELDS = {
+    skill: [
+      { key: "effect_name", name: "名稱" },
+      { key: "description", name: "描述" },
+      { key: "effect_type", name: "職業類型" },
+      { key: "effect_id_code", name: "顯示代碼" },
+      { key: "effect_code", name: "程式邏輯碼" }
+    ],
     move: [
       { key: "move_name", name: "名稱" },
       { key: "description", name: "描述" },
@@ -143,6 +131,13 @@ const SEARCH_FIELDS = {
     ]
   };
 
+  // ======== 中文職業對應表 ========
+  const OCCUPATION_MAP = {
+    "專攻": "A", "專補": "H", "專坦": "T", "專增益": "B", "專妨礙": "D",
+    "攻補": "AH", "攻坦": "AT", "妨礙補": "DH", "妨礙坦": "DT",
+    "增益補": "BH", "增益坦": "BT", "增益攻": "BA", "妨礙攻": "DA", "增益妨礙": "BD"
+  };
+
   // ============ 配置 ============
   const PAGE_SIZE = 10;
   const TABLES = {
@@ -152,9 +147,20 @@ const SEARCH_FIELDS = {
         { key: "effect_name", name: "名稱", type: "text", required: true },
         { key: "description", name: "描述", type: "text", required: true },
         { key: "effect_type", name: "職業類型", type: "select", required: true, options: [
-          {v:"attack",t:"攻擊"}, {v:"attack_only",t:"專攻"}, {v:"heal",t:"補師"}, {v:"heal_only",t:"專補"},
-          {v:"tank",t:"坦"}, {v:"tank_only",t:"專坦"}, {v:"buff",t:"增益"}, {v:"buff_only",t:"專增益"},
-          {v:"debuff",t:"妨礙"}, {v:"debuff_only",t:"專妨礙"}
+          {v:"A", t:"專攻"},
+          {v:"H", t:"專補"},
+          {v:"T", t:"專坦"},
+          {v:"B", t:"專增益"},
+          {v:"D", t:"專妨礙"},
+          {v:"AH", t:"攻補"},
+          {v:"AT", t:"攻坦"},
+          {v:"DH", t:"妨礙補"},
+          {v:"DT", t:"妨礙坦"},
+          {v:"BH", t:"增益補"},
+          {v:"BT", t:"增益坦"},
+          {v:"BA", t:"增益攻"},
+          {v:"DA", t:"妨礙攻"},
+          {v:"BD", t:"增益妨礙"}
         ]},
         { key: "target_faction", name: "對象", type: "select", required: true, options: [
           {v:"enemy",t:"敵方"}, {v:"ally",t:"隊友"}, {v:"self",t:"自己"}, {v:"team",t:"我方"}
@@ -199,33 +205,28 @@ const SEARCH_FIELDS = {
   };
   let currentTab = "skill", rawData = [], filteredData = [], currentPage = 1, sortKey = null, sortAsc = true, editingCell = null;
 
-  // ====== 在 renderTabs 切換 tab 後記得重新渲染搜尋欄位 ======
-function renderTabs() {
-  let html = "";
-  for (let key in TABLES) {
-    html += `<div class="tab${currentTab === key ? " active" : ""}" data-tab="${key}">${TABLES[key].label}</div>`;
+  function renderTabs() {
+    let html = "";
+    for(let key in TABLES) {
+      html += `<div class="tab${currentTab===key?" active":""}" data-tab="${key}">${TABLES[key].label}</div>`;
+    }
+    html += `<button class="return-btn" type="button" style="margin-left:auto" onclick="location.href='admin.html'">返回管理者首頁</button>`;
+    document.getElementById('tabs').innerHTML = html;
+    document.querySelectorAll('.tab').forEach(tabBtn => {
+      tabBtn.onclick = function() {
+        if(currentTab !== tabBtn.dataset.tab) {
+          currentTab = tabBtn.dataset.tab;
+          renderTabs();
+          renderAddForm();
+          renderSearchField();
+          document.getElementById('search').value = '';
+          currentPage = 1;
+          loadData();
+        }
+      };
+    });
   }
-  // 返回鈕靠右
-  html += `<div class="tab" style="margin-left:auto;" onclick="location.href='admin.html'">返回管理者首頁</div>`;
-  document.getElementById('tabs').innerHTML = html;
 
-  // 只對 data-tab 有事件
-  document.querySelectorAll('.tab[data-tab]').forEach(tabBtn => {
-    tabBtn.onclick = function () {
-      if (currentTab !== tabBtn.dataset.tab) {
-        currentTab = tabBtn.dataset.tab;
-        renderTabs();
-        renderSearchField();
-        document.getElementById('search').value = '';
-        currentPage = 1;
-        loadData();
-      }
-    };
-  });
-}
-
-
-  // 動態渲染 新增表單
   function renderAddForm() {
     const fields = TABLES[currentTab].fields;
     let html = `<form id="add-form" autocomplete="off" onsubmit="return handleAdd(event)">
@@ -259,7 +260,6 @@ function renderTabs() {
     document.querySelectorAll('#add-form input, #add-form select').forEach(el=>{ el.value=""; if(el.type==="select-one"&&el.options.length>0) el.selectedIndex=0; });
   }
 
-  // ========== 新增資料 ==========
   async function handleAdd(e) {
     e.preventDefault();
     const fields = TABLES[currentTab].fields;
@@ -287,7 +287,6 @@ function renderTabs() {
     return false;
   }
 
-  // ========== 查詢/排序/分頁/編輯/刪除 與之前相同 ==========
   function setMsg(msg, err) {
     document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
   }
@@ -302,19 +301,24 @@ function renderTabs() {
     setMsg('');
   }
 
-    // ====== 新增動態渲染搜尋欄位 ======
   function renderSearchField() {
     const sf = SEARCH_FIELDS[currentTab] || [];
     let html = '';
     sf.forEach(f => html += `<option value="${f.key}">${f.name}</option>`);
     document.getElementById('search-field').innerHTML = html;
   }
-  // ====== 修改 searchTable，只搜尋選定欄位 ======
   function searchTable() {
     const sf = document.getElementById('search-field').value;
     const kw = document.getElementById('search').value.trim().toLowerCase();
     if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
-    filteredData = rawData.filter(row => String(row[sf]??"").toLowerCase().includes(kw));
+    if (sf === "effect_type") {
+      filteredData = rawData.filter(row => {
+        let zh = Object.entries(OCCUPATION_MAP).find(([k,v])=>v===row[sf])?.[0] || "";
+        return (row[sf]??"").toLowerCase().includes(kw) || zh.includes(kw);
+      });
+    } else {
+      filteredData = rawData.filter(row => String(row[sf]??"").toLowerCase().includes(kw));
+    }
     currentPage = 1;
     renderTable();
   }
@@ -349,6 +353,9 @@ function renderTabs() {
             onkeydown="if(event.key==='Enter'){endEdit('${row[pk]}','${f.key}',this.value)}"></td>`;
         } else if ((f.type==="text"||f.type==="number")) {
           return `<td onclick="startEdit('${row[pk]}','${f.key}')">${val || '<span style=\'color:#aaa\'>[空]</span>'}</td>`;
+        } else if (f.key === "effect_type" && f.options) {
+          // 顯示中文職業
+          return `<td>${f.options.find(opt=>opt.v==val)?.t??val}</td>`;
         } else {
           return `<td>${(f.options ? (f.options.find(opt=>opt.v==val)?.t??'') : val) || ''}</td>`;
         }
@@ -399,7 +406,6 @@ function renderTabs() {
     await loadData();
   }
 
-  // 首次載入
   document.addEventListener('DOMContentLoaded', function () {
     renderTabs();
     renderAddForm();
@@ -415,6 +421,5 @@ function renderTabs() {
   window.delRow = delRow;
   window.clearAddForm = clearAddForm;
 </script>
- 
 </body>
 </html>

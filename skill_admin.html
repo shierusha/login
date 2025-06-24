@@ -307,8 +307,6 @@
     sf.forEach(f => html += `<option value="${f.key}">${f.name}</option>`);
     document.getElementById('search-field').innerHTML = html;
   }
-
-  // ====== 中文職業搜尋支援 ======
   function searchTable() {
     const sf = document.getElementById('search-field').value;
     const kw = document.getElementById('search').value.trim().toLowerCase();
@@ -324,7 +322,6 @@
     currentPage = 1;
     renderTable();
   }
-
   function sortBy(key) {
     if (sortKey === key) sortAsc = !sortAsc;
     else { sortKey = key; sortAsc = true; }

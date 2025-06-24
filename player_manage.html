@@ -8,9 +8,31 @@
     body { font-family: 'Noto Sans TC', sans-serif; background: #f4f7fa; margin: 0; padding: 2rem; }
     .container { max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 1.3rem; box-shadow: 0 2px 16px #0001; }
     h2 { text-align: center; margin-bottom: 1.3rem; }
-    .tabs { display: flex; gap: 1.2em; margin-bottom: 1.3em; }
+    .tabs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.2em;
+      margin-bottom: 1.3em;
+    }
+    .tabs { display: flex; gap: 1.2em; }
     .tab { cursor: pointer; padding: 0.65em 2.2em; border-radius: 2em; background: #eef2fa; color: #1d4076; font-weight: 600; transition: background .18s;}
     .tab.active { background: #1767a0; color: #fff; }
+    .return-btn {
+      background: #eef2fa;
+      color: #1d4076;
+      border: none;
+      border-radius: 2em;
+      padding: 0.65em 2.2em;
+      font-weight: 600;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background .18s;
+    }
+    .return-btn:hover, .return-btn:focus {
+      background: #1767a0;
+      color: #fff;
+    }
     .search-row { display: flex; gap: 1em; align-items: center; margin-bottom: 1.2em; }
     .search-row select, .search-row input { padding: 0.4em 1em; border-radius: 0.7em; border: 1px solid #ccc; }
     .msg { min-height: 1.5em; margin-bottom: 0.8em; }
@@ -26,6 +48,7 @@
     .pagination button { margin: 0 0.25em; border: none; background: #d7e4f5; color: #1767a0; padding: 0.3em 0.7em; border-radius: 0.5em; font-weight: 600; cursor: pointer;}
     .pagination button.active { background: #1767a0; color: #fff; }
     @media (max-width: 950px) {
+      .tabs-row { flex-direction: column; gap: 0.4em;}
       .tabs { flex-direction: column; gap: 0.4em;}
       th, td { font-size: 0.95em; }
     }
@@ -35,7 +58,10 @@
 <body>
   <div class="container">
     <h2>玩家 / 角色管理後台</h2>
-    <div class="tabs" id="tabs"></div>
+    <div class="tabs-row">
+      <div class="tabs" id="tabs"></div>
+      <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
+    </div>
     <div class="search-row">
       <select id="search-field"></select>
       <input id="search" type="text" placeholder="請輸入搜尋內容" oninput="searchTable()">
@@ -105,29 +131,27 @@
   let currentTab = "players", rawData = [], filteredData = [], currentPage = 1, expandRow = null;
 
   // Tab 切換
-function renderTabs() {
-  let html = "";
-  for (let key in TABLES) {
-    html += `<div class="tab${currentTab === key ? " active" : ""}" data-tab="${key}">${TABLES[key].label}</div>`;
-  }
-  // 返回鈕靠右
-  html += `<div class="tab" style="margin-left:auto;" onclick="location.href='admin.html'">返回管理者首頁</div>`;
-  document.getElementById('tabs').innerHTML = html;
+  function renderTabs() {
+    let html = "";
+    for (let key in TABLES) {
+      html += `<div class="tab${currentTab === key ? " active" : ""}" data-tab="${key}">${TABLES[key].label}</div>`;
+    }
+    document.getElementById('tabs').innerHTML = html;
 
-  // 只對 data-tab 有事件
-  document.querySelectorAll('.tab[data-tab]').forEach(tabBtn => {
-    tabBtn.onclick = function () {
-      if (currentTab !== tabBtn.dataset.tab) {
-        currentTab = tabBtn.dataset.tab;
-        renderTabs();
-        renderSearchField();
-        document.getElementById('search').value = '';
-        currentPage = 1;
-        loadData();
-      }
-    };
-  });
-}
+    // 只對 data-tab 有事件
+    document.querySelectorAll('.tab[data-tab]').forEach(tabBtn => {
+      tabBtn.onclick = function () {
+        if (currentTab !== tabBtn.dataset.tab) {
+          currentTab = tabBtn.dataset.tab;
+          renderTabs();
+          renderSearchField();
+          document.getElementById('search').value = '';
+          currentPage = 1;
+          loadData();
+        }
+      };
+    });
+  }
 
   // 搜尋下拉欄位
   function renderSearchField() {
@@ -233,7 +257,7 @@ function renderTabs() {
     let { data: chars } = await client.from("students").select("name,alignment,occupation_type,preferred_role,starting_position,student_type,student_id").eq("player_id", player.player_id);
     let html = "<b>持有角色：</b><ul>";
     (chars||[]).forEach(c=>{
-      html += `<li>${c.name} / ${c.alignment} / ${c.occupation_type} / ${c.preferred_role} / ${c.starting_position} / ${c.student_type} <button class="btn" onclick="expandStudent('${c.student_id}')">詳情</button></li>`;
+      html += `<li>${c.name} / ${c.alignment} / ${c.occupation_type} / ${c.preferred_role} / ${c.starting_position} / ${c.student_type} <button class="btn" onclick="expandStudent('${c.student_id}')">一覽</button> <button class="btn" onclick="expandSkills('${c.student_id}')">技能</button> <button class="btn btn-del" onclick="delStudent('${c.student_id}')">刪除</button></li>`;
     });
     html += "</ul>";
     expandRow = { id: username, html };
@@ -258,7 +282,7 @@ function renderTabs() {
     let { data: skills } = await client.from("student_skills").select("skill_name,description,final_score,final_cd,is_passive,range,require_cc").eq("student_id", student_id);
     let html = "<b>技能一覽：</b><ul>";
     (skills||[]).forEach((s,i)=> {
-      html += `<li>技能${i+1}：${s.skill_name||'(未命名)'} / ${s.description||''} / 分數:${s.final_score||''} / CD:${s.final_cd||''} / ${s.is_passive?'被動':''} / ${s.range||''} / ${s.require_cc?'需CC':''}</li>`;
+      html += `<li>技能${i+1}：${s.skill_name||'(未命名)'} / ${s.description||''} / 分數:${s.final_score||''} / CD:${s.final_cd||''} / ${s.is_passive?'被動':''} / ${s.range||''} / ${s.require_cc?'需控場':''}</li>`;
     });
     html += "</ul>";
     expandRow = { id: student_id+"_skills", html };

@@ -70,6 +70,7 @@
     <h2>技能管理後台</h2>
     <div class="tabs-row">
       <div class="tabs" id="tabs"></div>
+      <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
     </div>
     <div class="add-form-block" id="add-form-block"></div>
     <div class="search-row">
@@ -88,7 +89,8 @@
     'https://wfhwhvodgikpducrhgda.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_O6nJt4v-2nq8k'
   );
-  // ======== 權限檢查 ========
+
+  // ======== 權限檢查（同步執行即可） ========
   async function checkAdmin() {
     let { data: { user } } = await client.auth.getUser();
     if (!user) {
@@ -102,11 +104,14 @@
       alert('你不是管理員，無權進入'); location.href='login.html'; return;
     }
   }
-  async function logout() {
-    await client.auth.signOut();
-    location.href = 'login.html';
-  }
   checkAdmin();
+
+  // ======== 中文職業對應表 ========
+  const OCCUPATION_MAP = {
+    "專攻": "A", "專補": "H", "專坦": "T", "專增益": "B", "專妨礙": "D",
+    "攻補": "AH", "攻坦": "AT", "妨礙補": "DH", "妨礙坦": "DT",
+    "增益補": "BH", "增益坦": "BT", "增益攻": "BA", "妨礙攻": "DA", "增益妨礙": "BD"
+  };
 
   // ======== 搜尋欄位設定 ========
   const SEARCH_FIELDS = {
@@ -129,13 +134,6 @@
       { key: "effect_id_code", name: "顯示代碼" },
       { key: "effect_code", name: "程式邏輯碼" }
     ]
-  };
-
-  // ======== 中文職業對應表 ========
-  const OCCUPATION_MAP = {
-    "專攻": "A", "專補": "H", "專坦": "T", "專增益": "B", "專妨礙": "D",
-    "攻補": "AH", "攻坦": "AT", "妨礙補": "DH", "妨礙坦": "DT",
-    "增益補": "BH", "增益坦": "BT", "增益攻": "BA", "妨礙攻": "DA", "增益妨礙": "BD"
   };
 
   // ============ 配置 ============
@@ -167,7 +165,7 @@
         ]},
         { key: "max_targets", name: "人數", type: "number", required: true, min:1, max:5 },
         { key: "score", name: "分數", type: "number", required: true },
-        { key: "extra_cd", name: "cd ", type: "number", required: false },
+        { key: "extra_cd", name: "cd", type: "number", required: false },
         { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
         { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
       ]
@@ -178,13 +176,13 @@
         { key: "move_name", name: "名稱", type: "text", required: true },
         { key: "description", name: "描述", type: "text", required: true },
         { key: "target_faction", name: "對象", type: "select", required: true, options: [
-          {v:"enemy",t:"敵方"}, {v:"ally",t:"隊友"}, {v:"self",t:"自己"}, 
+          {v:"enemy",t:"敵方"}, {v:"ally",t:"隊友"}, {v:"self",t:"自己"}
         ]},
         { key: "range", name: "施放區域", type: "select", required: true, options: [
           {v:"same_zone",t:"同區"}, {v:"cross_zone",t:"跨區"}
         ]},
         { key: "max_targets", name: "人數", type: "select", required: true, options: [ {v:1, t:"1"} ] }, 
-        { key: "extra_cd", name: "cd ", type: "number", required: false },
+        { key: "extra_cd", name: "cd", type: "number", required: false },
         { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
         { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
       ]
@@ -195,7 +193,7 @@
         { key: "debuff_name", name: "名稱", type: "text", required: true },
         { key: "description", name: "描述", type: "text", required: true },
         { key: "debuff_type", name: "分類", type: "select", required: true, options: [
-          {v:"cc",t:"控場"}, {v:"cd",t:"cd "}, {v:"pass",t:"行動機會-1"}, {v:"debuff",t:"一般負面狀態"}, {v:"bleed",t:"損血"}
+          {v:"cc",t:"控場"}, {v:"cd",t:"cd"}, {v:"pass",t:"行動機會-1"}, {v:"debuff",t:"一般負面狀態"}, {v:"bleed",t:"損血"}
         ]},
         { key: "offset_score", name: "抵銷分數", type: "number", required: true },
         { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
@@ -210,7 +208,6 @@
     for(let key in TABLES) {
       html += `<div class="tab${currentTab===key?" active":""}" data-tab="${key}">${TABLES[key].label}</div>`;
     }
-    html += `<button class="return-btn" type="button" style="margin-left:auto" onclick="location.href='admin.html'">返回管理者首頁</button>`;
     document.getElementById('tabs').innerHTML = html;
     document.querySelectorAll('.tab').forEach(tabBtn => {
       tabBtn.onclick = function() {
@@ -311,10 +308,12 @@
     const sf = document.getElementById('search-field').value;
     const kw = document.getElementById('search').value.trim().toLowerCase();
     if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
+    // 增強職業類型搜尋：支援簡寫/中文
     if (sf === "effect_type") {
       filteredData = rawData.filter(row => {
+        if ((row[sf]??"").toLowerCase().includes(kw)) return true;
         let zh = Object.entries(OCCUPATION_MAP).find(([k,v])=>v===row[sf])?.[0] || "";
-        return (row[sf]??"").toLowerCase().includes(kw) || zh.includes(kw);
+        return zh.includes(kw);
       });
     } else {
       filteredData = rawData.filter(row => String(row[sf]??"").toLowerCase().includes(kw));

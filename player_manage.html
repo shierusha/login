@@ -105,13 +105,17 @@
   let currentTab = "players", rawData = [], filteredData = [], currentPage = 1, expandRow = null;
 
   // Tab 切換
-  function renderTabs() {
-    let html = "";
-    for(let key in TABLES) {
-      html += `<div class="tab${currentTab===key?" active":""}" data-tab="${key}">${TABLES[key].label}</div>`;
-    }
-    document.getElementById('tabs').innerHTML = html;
-    document.querySelectorAll('.tab').forEach(tabBtn => {
+function renderTabs() {
+  let html = "";
+  for(let key in TABLES) {
+    html += `<div class="tab${currentTab===key?" active":""}" data-tab="${key}">${TABLES[key].label}</div>`;
+  }
+  // 在這裡加上一個返回鍵，靠右
+  html += `<button class="tab" style="margin-left:auto; background:#ffeddd; color:#995d1b;" onclick="location.href='admin.html'">返回管理者首頁</button>`;
+  document.getElementById('tabs').innerHTML = html;
+  document.querySelectorAll('.tab').forEach(tabBtn => {
+    // 只給有 data-tab 屬性的 tab 綁切換（避免返回鍵也被當作表格tab處理）
+    if(tabBtn.dataset.tab) {
       tabBtn.onclick = function() {
         if(currentTab !== tabBtn.dataset.tab) {
           currentTab = tabBtn.dataset.tab;
@@ -122,8 +126,9 @@
           loadData();
         }
       };
-    });
-  }
+    }
+  });
+}
 
   // 搜尋下拉欄位
   function renderSearchField() {

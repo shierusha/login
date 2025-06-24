@@ -18,7 +18,7 @@
     .tabs { display: flex; gap: 1.2em; }
     .tab { cursor: pointer; padding: 0.65em 2.2em; border-radius: 2em; background: #eef2fa; color: #1d4076; font-weight: 600; transition: background .18s;}
     .tab.active { background: #1767a0; color: #fff; }
-    .return-btn {
+    .return-btn, .delete-toggle-btn {
       background: #eef2fa;
       color: #1d4076;
       border: none;
@@ -28,9 +28,15 @@
       font-size: 1em;
       cursor: pointer;
       transition: background .18s;
+      margin-left: 0.7em;
     }
-    .return-btn:hover, .return-btn:focus {
+    .return-btn:hover, .return-btn:focus,
+    .delete-toggle-btn:hover, .delete-toggle-btn:focus {
       background: #1767a0;
+      color: #fff;
+    }
+    .delete-toggle-btn.active {
+      background: #f66464;
       color: #fff;
     }
     .search-row { display: flex; gap: 1em; align-items: center; margin-bottom: 1.2em; }
@@ -42,6 +48,7 @@
     th { background: #f4f7fa; font-size: 1em; cursor: pointer; }
     .btn { background: #1767a0; color: #fff; border: none; border-radius: 0.5em; padding: 0.3em 0.8em; font-weight: 600; cursor: pointer; margin-right: 0.2em;}
     .btn-del { background: #f66464; }
+    .btn-del[disabled] { opacity: 0.4; cursor: not-allowed; }
     .expand-row { background: #f7f9fd; }
     .collapse-content { padding: 1em 2em; }
     .pagination { text-align: center; margin: 1em 0; }
@@ -51,6 +58,7 @@
       .tabs-row { flex-direction: column; gap: 0.4em;}
       .tabs { flex-direction: column; gap: 0.4em;}
       th, td { font-size: 0.95em; }
+      .return-btn, .delete-toggle-btn { margin-left: 0; margin-top: 0.5em; }
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -60,7 +68,10 @@
     <h2>玩家 / 角色管理後台</h2>
     <div class="tabs-row">
       <div class="tabs" id="tabs"></div>
-      <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
+      <div>
+        <button id="delete-toggle-btn" class="delete-toggle-btn" type="button" onclick="toggleDeleteMode()">啟用刪除</button>
+        <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
+      </div>
     </div>
     <div class="search-row">
       <select id="search-field"></select>
@@ -129,6 +140,7 @@
     }
   };
   let currentTab = "players", rawData = [], filteredData = [], currentPage = 1, expandRow = null;
+  let deleteMode = false;
 
   // Tab 切換
   function renderTabs() {
@@ -151,6 +163,20 @@
         }
       };
     });
+  }
+
+  // 啟用/停用 刪除模式
+  function toggleDeleteMode() {
+    deleteMode = !deleteMode;
+    const btn = document.getElementById('delete-toggle-btn');
+    if (deleteMode) {
+      btn.classList.add('active');
+      btn.textContent = '停用刪除';
+    } else {
+      btn.classList.remove('active');
+      btn.textContent = '啟用刪除';
+    }
+    renderTable();
   }
 
   // 搜尋下拉欄位
@@ -221,13 +247,13 @@
       if (currentTab==="players") {
         trs += `<td>
           <button class="btn" onclick="expandChars('${row.username}')">角色</button>
-          <button class="btn btn-del" onclick="delPlayer('${row.username}')">刪除</button>
+          ${deleteMode ? `<button class="btn btn-del" onclick="delPlayer('${row.username}')">刪除</button>` : ""}
         </td>`;
       } else {
         trs += `<td>
           <button class="btn" onclick="expandStudent('${row.student_id}')">一覽</button>
           <button class="btn" onclick="expandSkills('${row.student_id}')">技能</button>
-          <button class="btn btn-del" onclick="delStudent('${row.student_id}')">刪除</button>
+          ${deleteMode ? `<button class="btn btn-del" onclick="delStudent('${row.student_id}')">刪除</button>` : ""}
         </td>`;
       }
       trs += "</tr>";
@@ -257,7 +283,7 @@
     let { data: chars } = await client.from("students").select("name,alignment,occupation_type,preferred_role,starting_position,student_type,student_id").eq("player_id", player.player_id);
     let html = "<b>持有角色：</b><ul>";
     (chars||[]).forEach(c=>{
-      html += `<li>${c.name} / ${c.alignment} / ${c.occupation_type} / ${c.preferred_role} / ${c.starting_position} / ${c.student_type} <button class="btn" onclick="expandStudent('${c.student_id}')">一覽</button> <button class="btn" onclick="expandSkills('${c.student_id}')">技能</button> <button class="btn btn-del" onclick="delStudent('${c.student_id}')">刪除</button></li>`;
+      html += `<li>${c.name} / ${c.alignment} / ${c.occupation_type} / ${c.preferred_role} / ${c.starting_position} / ${c.student_type} <button class="btn" onclick="expandStudent('${c.student_id}')">一覽</button> <button class="btn" onclick="expandSkills('${c.student_id}')">技能</button> ${deleteMode ? `<button class="btn btn-del" onclick="delStudent('${c.student_id}')">刪除</button>` : ""}</li>`;
     });
     html += "</ul>";
     expandRow = { id: username, html };
@@ -291,6 +317,7 @@
 
   // 刪除玩家
   async function delPlayer(username) {
+    if (!deleteMode) return;
     if (!confirm('確定要刪除這個玩家（及其所有角色）？')) return;
     let { data: player } = await client.from("players").select("player_id").eq("username", username).single();
     if (!player) return setMsg("查無此玩家",true);
@@ -302,6 +329,7 @@
   }
   // 刪除角色
   async function delStudent(student_id) {
+    if (!deleteMode) return;
     if (!confirm('確定要刪除這個角色？')) return;
     let { error } = await client.from("students").delete().eq("student_id", student_id);
     if (error) setMsg("刪除失敗: " + error.message,true);
@@ -326,6 +354,7 @@
   window.delPlayer = delPlayer;
   window.delStudent = delStudent;
   window.searchTable = searchTable;
+  window.toggleDeleteMode = toggleDeleteMode;
 </script>
 </body>
 </html>

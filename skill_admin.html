@@ -40,28 +40,28 @@
       th, td { font-size: 0.95em; }
       .form-group { min-width: 0; }
     }
-.tabs-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1.2em;
-  margin-bottom: 1.3em;
-}
-.return-btn {
-  background: #eef2fa;
-  color: #1d4076;
-  border: none;
-  border-radius: 2em;
-  padding: 0.65em 2.2em;
-  font-weight: 600;
-  font-size: 1em;
-  cursor: pointer;
-  transition: background .18s;
-}
-.return-btn:hover, .return-btn:focus {
-  background: #1767a0;
-  color: #fff;
-}
+    .tabs-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.2em;
+      margin-bottom: 1.3em;
+    }
+    .return-btn {
+      background: #eef2fa;
+      color: #1d4076;
+      border: none;
+      border-radius: 2em;
+      padding: 0.65em 2.2em;
+      font-weight: 600;
+      font-size: 1em;
+      cursor: pointer;
+      transition: background .18s;
+    }
+    .return-btn:hover, .return-btn:focus {
+      background: #1767a0;
+      color: #fff;
+    }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -70,6 +70,7 @@
     <h2>技能管理後台</h2>
     <div class="tabs-row">
       <div class="tabs" id="tabs"></div>
+      <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
     </div>
     <div class="add-form-block" id="add-form-block"></div>
     <div class="search-row">
@@ -90,25 +91,25 @@
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
   );
   // 權限檢查
- async function checkAdmin() {
-  let { data: { session } } = await client.auth.getSession();
-  if (!session || !session.user) {
-    alert('請先登入！');
-    location.href = 'login.html';
-    return;
+  async function checkAdmin() {
+    let { data: { session } } = await client.auth.getSession();
+    if (!session || !session.user) {
+      alert('請先登入！');
+      location.href = 'login.html';
+      return;
+    }
+    let { data, error } = await client.from('players').select('username,role').eq('email', session.user.email).single();
+    if (error || !data) {
+      alert('帳號資料錯誤，請重新登入');
+      location.href = 'login.html';
+      return;
+    }
+    if (data.role !== 'admin') {
+      alert('你不是管理員，無權進入');
+      location.href = 'login.html';
+      return;
+    }
   }
-  let { data, error } = await client.from('players').select('username,role').eq('email', session.user.email).single();
-  if (error || !data) {
-    alert('帳號資料錯誤，請重新登入');
-    location.href = 'login.html';
-    return;
-  }
-  if (data.role !== 'admin') {
-    alert('你不是管理員，無權進入');
-    location.href = 'login.html';
-    return;
-  }
-}
   // ======== 搜尋欄位設定，每個 Tab 對應 ========
   const SEARCH_FIELDS = {
     skill: [
@@ -208,7 +209,6 @@
     for(let key in TABLES) {
       html += `<div class="tab${currentTab===key?" active":""}" data-tab="${key}">${TABLES[key].label}</div>`;
     }
-    html += `<button class="return-btn" type="button" style="margin-left:auto" onclick="location.href='admin.html'">返回管理者首頁</button>`;
     document.getElementById('tabs').innerHTML = html;
     document.querySelectorAll('.tab').forEach(tabBtn => {
       tabBtn.onclick = function() {
@@ -417,6 +417,7 @@
 
   // 首次載入
   document.addEventListener('DOMContentLoaded', function () {
+    checkAdmin();
     renderTabs();
     renderAddForm();
     renderSearchField(); 

@@ -88,27 +88,25 @@
     'https://wfhwhvodgikpducrhgda.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_O6nJt4v-2nq8k'
   );
-
-  // ======== 權限檢查（新版，保證等檢查完才 render） ========
+  // ======== 權限檢查 ========
   async function checkAdmin() {
     let { data: { user } } = await client.auth.getUser();
     if (!user) {
-      alert('請先登入！'); location.href='login.html'; return false;
+      alert('請先登入！'); location.href='login.html'; return;
     }
     let { data, error } = await client.from('players').select('username,role').eq('email', user.email).single();
     if (error || !data) {
-      alert('帳號資料錯誤，請重新登入'); location.href='login.html'; return false;
+      alert('帳號資料錯誤，請重新登入'); location.href='login.html'; return;
     }
     if (data.role !== 'admin') {
-      alert('你不是管理員，無權進入'); location.href='login.html'; return false;
+      alert('你不是管理員，無權進入'); location.href='login.html'; return;
     }
-    return true;
   }
-
   async function logout() {
     await client.auth.signOut();
     location.href = 'login.html';
   }
+  checkAdmin();
 
   // ======== 搜尋欄位設定 ========
   const SEARCH_FIELDS = {
@@ -408,10 +406,7 @@
     await loadData();
   }
 
-  // ====== 啟動時權限先檢查，通過才 render ======
-  document.addEventListener('DOMContentLoaded', async function () {
-    let ok = await checkAdmin();
-    if (!ok) return;
+  document.addEventListener('DOMContentLoaded', function () {
     renderTabs();
     renderAddForm();
     renderSearchField(); 

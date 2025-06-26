@@ -392,20 +392,23 @@
       if (el) el.focus();
     }, 80);
   }
-  async function endEdit(id, key, value) {
-    const fields = TABLES[currentTab].fields;
-    const pk = TABLES[currentTab].pk;
-    editingCell = null;
-    let row = rawData.find(r => String(r[pk]) === String(id));
-    if (!row) return renderTable();
-    if (row[key] == value) return renderTable();
-    let updateObj = {};
-    updateObj[key] = (fields.find(f => f.key === key) && typeof row[key] === "number") ? Number(value) : value;
-    let { error } = await client.from(TABLES[currentTab].table).update(updateObj).eq(pk, id);
-    if (error) setMsg('⚠️ 修改失敗: ' + error.message, true);
-    else setMsg('✔️ 已修改');
-    await loadData();
-  }
+async function endEdit(id, key, value) {
+  const fields = TABLES[currentTab].fields;
+  const pk = TABLES[currentTab].pk;
+  editingCell = null;
+  let row = rawData.find(r => String(r[pk]) === String(id));
+  if (!row) return renderTable();
+  if (row[key] == value) return renderTable();
+  let updateObj = {};
+  updateObj[key] = (fields.find(f => f.key === key) && typeof row[key] === "number") ? Number(value) : value;
+  let { error } = await client.from(TABLES[currentTab].table).update(updateObj).eq(pk, id);
+  if (error) setMsg('⚠️ 修改失敗: ' + error.message, true);
+  else setMsg('✔️ 已修改');
+  // 延遲執行 loadData，避免「blur」時 DOM 被移除
+  setTimeout(() => {
+    loadData();
+  }, 0);
+}
   async function delRow(id) {
     if (!confirm('確定要刪除這筆資料嗎？刪了不可回復！')) return;
     const pk = TABLES[currentTab].pk;

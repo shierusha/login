@@ -365,7 +365,8 @@ function renderPlayersTable() {
     });
     trs += `<td>
       <button class="btn" onclick="expandChars('${row.username}')">角色一覽</button>
-      ${deleteMode ? `<button class="btn btn-del" onclick="delPlayer('${row.username}')">刪除</button>` : ""}
+      ${deleteMode ? `<button class="btn btn-del show" onclick="delPlayer('${row.username}')">刪除</button>` : ""}
+
     </td></tr>`;
 
     // 角色一覽展開區

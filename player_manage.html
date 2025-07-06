@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <title>謝爾夏｜玩家/角色管理後台</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
+<style>
 body { font-family: 'Noto Sans TC', sans-serif; background: #f4f7fa; margin: 0; padding: 2rem; }
 .container { max-width: 1200px; margin: auto; background: white; padding: 2rem; border-radius: 1.3rem; box-shadow: 0 2px 16px #0001; }
 h2 { text-align: center; margin-bottom: 1.3rem; }
@@ -47,7 +47,11 @@ table { width: 100%; border-collapse: collapse; margin-bottom: 1em; }
 th, td { border-bottom: 1px solid #eef2fa; padding: 0.44em 0.63em; text-align: left; }
 th { background: #f4f7fa; font-size: 1em; cursor: pointer; }
 .btn { background: #1767a0; color: #fff; border: none; border-radius: 0.5em; padding: 0.3em 0.8em; font-weight: 600; cursor: pointer; margin-right: 0.2em;}
+/* 刪除按鈕顯示控制 START */
 .btn-del { background: #f66464; display: none; }
+#players-table .btn-del.show { display: inline-block; }
+.role-table .btn-del.show { display: inline-block; }
+/* 刪除按鈕顯示控制 END */
 .btn-del[disabled] { opacity: 0.4; cursor: not-allowed; }
 .expand-row { background: #f7f9fd; }
 .collapse-content { padding: 1em 2em; }
@@ -89,11 +93,6 @@ th { background: #f4f7fa; font-size: 1em; cursor: pointer; }
   margin-right: 0.2em;
 }
 .role-table .btn-edit { background: #f89b29; }
-.role-table .btn-del {
-  background: #f66464;
-  display: none; /* 預設隱藏，啟用刪除時再顯示（由JS加.show） */
-}
-.role-table .btn-del.show { display: inline-block; }
 .role-table .btn-link { background: #43b24a; }
 .role-table .open-card-row {
   background: #f7f9fd;
@@ -133,8 +132,8 @@ th { background: #f4f7fa; font-size: 1em; cursor: pointer; }
   .role-table th, .role-table td { font-size: 0.96em; }
   .modal { padding: 1.2em; }
 }
+</style>
 
-  </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>

@@ -208,7 +208,7 @@ async function signIn() {
     }, 600);
   } else {
     setTimeout(() => {
-      window.location.href = 'https://shierusha.github.io/create-student/charlist.html'; // 這裡是玩家首頁
+      window.location.href = 'https://shierusha.github.io/create-student/player.html'; // 這裡是玩家首頁
     }, 600);
   }
 }

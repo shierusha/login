@@ -60,301 +60,236 @@
       th, td { font-size: 0.95em; }
       .return-btn, .delete-toggle-btn { margin-left: 0; margin-top: 0.5em; }
     }
+ <!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>謝爾夏｜角色管理</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    /* ...（你原本的 CSS 可保留）... */
+    .btn { background: #1767a0; color: #fff; border: none; border-radius: 0.5em; padding: 0.3em 0.8em; font-weight: 600; cursor: pointer; margin-right: 0.2em;}
+    .btn-link { background: #43b24a;}
+    .btn-audit { background: #f89b29;}
+    .btn-del { background: #f66464;}
+    .expand-row { background: #f7f9fd; }
+    .collapse-content { padding: 1em 2em; }
+    /* 審核彈窗 */
+    .modal-bg {
+      display: none; position: fixed; left:0; top:0; width:100vw; height:100vh;
+      background:rgba(0,0,0,0.22); z-index: 1001;
+      justify-content:center; align-items: center;
+    }
+    .modal {
+      background: #fff; border-radius: 1em; max-width: 370px; padding: 2em 1.5em;
+      box-shadow: 0 4px 24px #0004; position: relative;
+    }
+    .modal h3 { margin-top: 0; margin-bottom: 1em;}
+    .modal .close-btn { position: absolute; top: 0.6em; right: 1em; background: none; border:none; font-size:1.6em; color:#999; cursor:pointer;}
+    .modal .audit-option { margin: 0.7em 0;}
+    .modal .audit-option label { margin-left: 0.5em;}
+    .modal .btn {margin:0;}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
   <div class="container">
-    <h2>玩家 / 角色管理後台</h2>
-    <div class="tabs-row">
-      <div class="tabs" id="tabs"></div>
-      <div>
-        <button id="delete-toggle-btn" class="delete-toggle-btn" type="button" onclick="toggleDeleteMode()">啟用刪除</button>
-        <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
+    <h2>角色管理</h2>
+    <span class="msg" id="msg"></span>
+    <div class="table-wrap">
+      <table id="data-table">
+        <thead>
+          <tr>
+            <th>名字</th>
+            <th>性別</th>
+            <th>陣營</th>
+            <th>狀態</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="data-tbody">
+        </tbody>
+      </table>
+    </div>
+    <div style="text-align: right;">
+      <button class="btn" onclick="location.href='admin.html'">返回</button>
+    </div>
+  </div>
+
+  <!-- 審核彈窗 -->
+  <div class="modal-bg" id="audit-modal-bg">
+    <div class="modal" id="audit-modal">
+      <button class="close-btn" onclick="closeAuditModal()">×</button>
+      <h3>審核狀態設定</h3>
+      <div class="audit-option">
+        <input type="radio" id="audit-pass" name="audit" value="PASS">
+        <label for="audit-pass">已通過</label>
+      </div>
+      <div class="audit-option">
+        <input type="radio" id="audit-wait" name="audit" value="WAIT">
+        <label for="audit-wait">審核中</label>
+      </div>
+      <div class="audit-option">
+        <input type="radio" id="audit-bad" name="audit" value="BAD">
+        <label for="audit-bad">未通過</label>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-audit" onclick="saveAuditStatus()">儲存</button>
       </div>
     </div>
-    <div class="search-row">
-      <select id="search-field"></select>
-      <input id="search" type="text" placeholder="請輸入搜尋內容" oninput="searchTable()">
-      <span class="msg" id="msg"></span>
-    </div>
-    <div class="table-wrap">
-      <table id="data-table"></table>
-    </div>
-    <div class="pagination" id="pagination"></div>
   </div>
+
 <script>
-  // ====== Supabase 設定 ======
+  // Supabase init
   const client = window.supabase.createClient(
     'https://wfhwhvodgikpducrhgda.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
   );
-  // 權限檢查
-  async function checkAdmin() {
-    let { data: { user } } = await client.auth.getUser();
-    if (!user) { alert('請先登入！'); location.href='login.html'; return; }
-    let { data, error } = await client.from('players').select('username,role').eq('email', user.email).single();
-    if (error || !data) { alert('帳號資料錯誤，請重新登入'); location.href='login.html'; return; }
-    if (data.role !== 'admin') { alert('你不是管理員，無權進入'); location.href='login.html'; return; }
+  let studentData = [];
+  let reviewMap = {};
+  let expandRow = null; // 學生證展開
+  let deleteMode = false; // 刪除模式
+  let auditStuId = null; // 正在審核 student_id
+
+  // 審核enum對應中文
+  function getReviewStatus(s) {
+    if (s === "WAIT") return "審核中";
+    if (s === "PASS") return "已通過";
+    if (s === "BAD") return "未通過";
+    return "未審核";
   }
-  checkAdmin();
-
-  // ====== 配置 ======
-  const PAGE_SIZE = 10;
-  const TABLES = {
-    players: {
-      label: "玩家管理",
-      fields: [
-        { key: "username", name: "玩家名稱" },
-        { key: "email", name: "信箱" },
-        { key: "role", name: "身份" },
-        { key: "char_count", name: "持有角色數" }
-      ],
-      search: [
-        { key: "username", name: "玩家名稱" },
-        { key: "email", name: "信箱" },
-        { key: "role", name: "身份" }
-      ]
-    },
-    students: {
-      label: "角色管理",
-      fields: [
-        { key: "username", name: "玩家" },
-        { key: "name", name: "角色" },
-        { key: "alignment", name: "陣營" },
-        { key: "occupation_type", name: "職業" },
-        { key: "preferred_role", name: "角色定位" },
-        { key: "starting_position", name: "起始站位" },
-        { key: "student_type", name: "學生類型" },
-        { key: "review_status", name: "審核狀態" }
-      ],
-      search: [
-        { key: "username", name: "玩家" },
-        { key: "name", name: "角色" },
-        { key: "alignment", name: "陣營" },
-        { key: "occupation_type", name: "職業" },
-        { key: "preferred_role", name: "角色定位" },
-        { key: "student_type", name: "學生類型" },
-        { key: "review_status", name: "審核狀態" }
-      ]
-    }
-  };
-  let currentTab = "players", rawData = [], filteredData = [], currentPage = 1, expandRow = null;
-  let deleteMode = false;
-
-  // Tab 切換
-  function renderTabs() {
-    let html = "";
-    for (let key in TABLES) {
-      html += `<div class="tab${currentTab === key ? " active" : ""}" data-tab="${key}">${TABLES[key].label}</div>`;
-    }
-    document.getElementById('tabs').innerHTML = html;
-
-    // 只對 data-tab 有事件
-    document.querySelectorAll('.tab[data-tab]').forEach(tabBtn => {
-      tabBtn.onclick = function () {
-        if (currentTab !== tabBtn.dataset.tab) {
-          currentTab = tabBtn.dataset.tab;
-          renderTabs();
-          renderSearchField();
-          document.getElementById('search').value = '';
-          currentPage = 1;
-          loadData();
-        }
-      };
-    });
+  function getGender(g) {
+    if (g === "M") return "男";
+    if (g === "F") return "女";
+    if (g === "O") return "其他";
+    return "-";
+  }
+  function getAlignment(a) {
+    if (a === "white") return "白";
+    if (a === "black") return "黑";
+    return a || "-";
   }
 
-  // 啟用/停用 刪除模式
-  function toggleDeleteMode() {
-    deleteMode = !deleteMode;
-    const btn = document.getElementById('delete-toggle-btn');
-    if (deleteMode) {
-      btn.classList.add('active');
-      btn.textContent = '停用刪除';
-    } else {
-      btn.classList.remove('active');
-      btn.textContent = '啟用刪除';
-    }
-    renderTable();
-  }
-
-  // 搜尋下拉欄位
-  function renderSearchField() {
-    const searchFields = TABLES[currentTab].search;
-    let html = '';
-    searchFields.forEach(sf=>{
-      html += `<option value="${sf.key}">${sf.name}</option>`;
-    });
-    document.getElementById('search-field').innerHTML = html;
-  }
-
-  // 資料載入
   async function loadData() {
-    setMsg("資料載入中...");
-    expandRow = null;
-    if (currentTab === "players") {
-      // 取得玩家與角色數
-      let { data: players, error } = await client.from("players").select("player_id,username,email,role");
-      if (error) return setMsg("玩家讀取失敗：" + error.message, true);
-      let { data: chars } = await client.from("students").select("player_id");
-      let charMap = {};
-      (chars||[]).forEach(c=>{ charMap[c.player_id]=(charMap[c.player_id]||0)+1; });
-      rawData = (players||[]).map(p=>({ ...p, char_count: charMap[p.player_id]||0 }));
-    } else if (currentTab === "students") {
-      // 取得角色資訊 + 審核狀態
-      let { data: students, error } = await client.from("students").select("student_id,player_id,name,alignment,occupation_type,preferred_role,starting_position,student_type");
-      if (error) return setMsg("角色讀取失敗：" + error.message, true);
-      let { data: reviews } = await client.from("student_reviews").select("student_id,status");
-      let reviewMap = {};
-      (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
-      // 玩家名稱
-      let { data: players } = await client.from("players").select("player_id,username");
-      let nameMap = {};
-      (players||[]).forEach(p=>{ nameMap[p.player_id]=p.username; });
-      rawData = (students||[]).map(s=>({
-        ...s,
-        username: nameMap[s.player_id]||"未知",
-        review_status: reviewMap[s.student_id]||"未審核"
-      }));
-    }
-    filteredData = rawData;
+    setMsg('載入中...');
+    // 取得學生資料
+    let { data: students, error: sErr } = await client.from('students')
+      .select('student_id,name,gender,alignment');
+    if (sErr) { setMsg('角色載入失敗'); return; }
+    studentData = students || [];
+    // 取得審核狀態
+    let { data: reviews } = await client.from('student_reviews').select('student_id,status');
+    reviewMap = {};
+    (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
     renderTable();
-    setMsg("");
+    setMsg('');
   }
 
-  // 搜尋/分頁
-  function searchTable() {
-    const field = document.getElementById('search-field').value;
-    const kw = document.getElementById('search').value.trim().toLowerCase();
-    if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
-    filteredData = rawData.filter(row => String(row[field]??"").toLowerCase().includes(kw));
-    currentPage = 1;
-    renderTable();
-  }
-
-  // 資料表
   function renderTable() {
-    const fields = TABLES[currentTab].fields;
-    let th = "<tr>" + fields.map(f=>`<th>${f.name}</th>`).join("") + "<th>操作</th></tr>";
-    let trs = "";
-    const start = (currentPage-1)*PAGE_SIZE, end = start+PAGE_SIZE;
-    filteredData.slice(start,end).forEach((row, i) => {
-      trs += "<tr>";
-      fields.forEach(f=>{
-        trs += `<td>${row[f.key]??""}</td>`;
-      });
-      if (currentTab==="players") {
-        trs += `<td>
-          <button class="btn" onclick="expandChars('${row.username}')">角色</button>
-          ${deleteMode ? `<button class="btn btn-del" onclick="delPlayer('${row.username}')">刪除</button>` : ""}
-        </td>`;
-      } else {
-        trs += `<td>
-          <button class="btn" onclick="expandStudent('${row.student_id}')">一覽</button>
-          <button class="btn" onclick="expandSkills('${row.student_id}')">技能</button>
-          ${deleteMode ? `<button class="btn btn-del" onclick="delStudent('${row.student_id}')">刪除</button>` : ""}
-        </td>`;
-      }
-      trs += "</tr>";
-      // 展開顯示
-      if (expandRow && expandRow.id === (currentTab==="players"?row.username:row.student_id)) {
-        trs += `<tr class="expand-row"><td colspan="${fields.length+1}"><div class="collapse-content">${expandRow.html}</div></td></tr>`;
-      }
+    const tbody = document.getElementById('data-tbody');
+    tbody.innerHTML = '';
+    studentData.forEach(stu => {
+      const reviewStatus = getReviewStatus(reviewMap[stu.student_id]);
+      tbody.innerHTML += `
+        <tr>
+          <td>${stu.name}</td>
+          <td>${getGender(stu.gender)}</td>
+          <td>${getAlignment(stu.alignment)}</td>
+          <td>${reviewStatus}</td>
+          <td>
+            <button class="btn btn-link" onclick="toggleStudentCard('${stu.student_id}')">學生證</button>
+            <button class="btn btn-audit" onclick="openAuditModal('${stu.student_id}')">審核</button>
+            <button class="btn btn-del" style="display:${deleteMode?'':'none'}" onclick="delStudent('${stu.student_id}')">刪除</button>
+          </td>
+        </tr>
+        ${expandRow === stu.student_id ? `
+        <tr class="expand-row"><td colspan="5">
+          <div class="collapse-content" id="card-${stu.student_id}">載入中...</div>
+        </td></tr>` : ""}
+      `;
     });
-    document.getElementById('data-table').innerHTML = th + trs;
-    renderPagination();
-  }
-  function renderPagination() {
-    const pageCount = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
-    let html = '';
-    for (let i = 1; i <= pageCount; i++) {
-      html += `<button ${i === currentPage ? 'class="active"' : ''} onclick="gotoPage(${i})">${i}</button>`;
-    }
-    document.getElementById('pagination').innerHTML = html;
-  }
-  function gotoPage(p) { currentPage = p; renderTable(); }
-
-  // 展開角色清單
-  async function expandChars(username) {
-    if (expandRow && expandRow.id === username) { expandRow = null; return renderTable(); }
-    let { data: player } = await client.from("players").select("player_id").eq("username", username).single();
-    if (!player) return setMsg("找不到玩家",true);
-    let { data: chars } = await client.from("students").select("name,alignment,occupation_type,preferred_role,starting_position,student_type,student_id").eq("player_id", player.player_id);
-    let html = "<b>持有角色：</b><ul>";
-    (chars||[]).forEach(c=>{
-      html += `<li>${c.name} / ${c.alignment} / ${c.occupation_type} / ${c.preferred_role} / ${c.starting_position} / ${c.student_type} <button class="btn" onclick="expandStudent('${c.student_id}')">一覽</button> <button class="btn" onclick="expandSkills('${c.student_id}')">技能</button> ${deleteMode ? `<button class="btn btn-del" onclick="delStudent('${c.student_id}')">刪除</button>` : ""}</li>`;
-    });
-    html += "</ul>";
-    expandRow = { id: username, html };
-    renderTable();
-  }
-  // 展開角色詳情
-  async function expandStudent(student_id) {
-    if (expandRow && expandRow.id === student_id) { expandRow = null; return renderTable(); }
-    let { data: stu } = await client.from("students").select("*").eq("student_id", student_id).single();
-    if (!stu) return setMsg("查無角色", true);
-    let html = "<b>角色資料：</b><ul>";
-    for (let k in stu) {
-      html += `<li><b>${k}</b>：${stu[k]}</li>`;
-    }
-    html += "</ul>";
-    expandRow = { id: student_id, html };
-    renderTable();
-  }
-  // 展開技能
-  async function expandSkills(student_id) {
-    if (expandRow && expandRow.id === student_id+"_skills") { expandRow = null; return renderTable(); }
-    let { data: skills } = await client.from("student_skills").select("skill_name,description,final_score,final_cd,is_passive,range,require_cc").eq("student_id", student_id);
-    let html = "<b>技能一覽：</b><ul>";
-    (skills||[]).forEach((s,i)=> {
-      html += `<li>技能${i+1}：${s.skill_name||'(未命名)'} / ${s.description||''} / 分數:${s.final_score||''} / CD:${s.final_cd||''} / ${s.is_passive?'被動':''} / ${s.range||''} / ${s.require_cc?'需控場':''}</li>`;
-    });
-    html += "</ul>";
-    expandRow = { id: student_id+"_skills", html };
-    renderTable();
+    // 若展開學生證，立即加載內容
+    if (expandRow) showStudentCard(expandRow);
   }
 
-  // 刪除玩家
-  async function delPlayer(username) {
-    if (!deleteMode) return;
-    if (!confirm('確定要刪除這個玩家（及其所有角色）？')) return;
-    let { data: player } = await client.from("players").select("player_id").eq("username", username).single();
-    if (!player) return setMsg("查無此玩家",true);
-    await client.from("students").delete().eq("player_id", player.player_id); // 先刪角色
-    let { error } = await client.from("players").delete().eq("player_id", player.player_id);
-    if (error) setMsg("刪除失敗: " + error.message,true);
-    else setMsg("已刪除玩家及其角色");
-    await loadData();
+  // 學生證顯示/收合
+  function toggleStudentCard(student_id) {
+    if (expandRow === student_id) {
+      expandRow = null; renderTable(); return;
+    }
+    expandRow = student_id; renderTable();
   }
-  // 刪除角色
+  async function showStudentCard(student_id) {
+    // 可根據你的需求，這裡也可 window.open 新頁面
+    let { data: stu, error } = await client.from('students').select('*').eq('student_id', student_id).single();
+    if (!stu) document.getElementById(`card-${student_id}`).innerHTML = "查無學生資料";
+    else {
+      let html = "<b>學生證</b><ul>";
+      for (let k in stu) html += `<li><b>${k}</b>：${stu[k]}</li>`;
+      html += "</ul>";
+      document.getElementById(`card-${student_id}`).innerHTML = html;
+    }
+  }
+
+  // 刪除
   async function delStudent(student_id) {
     if (!deleteMode) return;
     if (!confirm('確定要刪除這個角色？')) return;
     let { error } = await client.from("students").delete().eq("student_id", student_id);
-    if (error) setMsg("刪除失敗: " + error.message,true);
+    if (error) setMsg("刪除失敗: " + error.message, true);
     else setMsg("已刪除角色");
     await loadData();
+  }
+
+  // 切換刪除模式
+  function toggleDeleteMode() {
+    deleteMode = !deleteMode;
+    renderTable();
+  }
+
+  // ================= 審核 ====================
+  function openAuditModal(student_id) {
+    auditStuId = student_id;
+    // 讀取狀態自動選
+    let status = reviewMap[student_id] || "WAIT";
+    document.getElementById('audit-pass').checked = (status === "PASS");
+    document.getElementById('audit-wait').checked = (status === "WAIT");
+    document.getElementById('audit-bad').checked = (status === "BAD");
+    document.getElementById('audit-modal-bg').style.display = 'flex';
+  }
+  function closeAuditModal() {
+    document.getElementById('audit-modal-bg').style.display = 'none';
+    auditStuId = null;
+  }
+  async function saveAuditStatus() {
+    let status = document.querySelector('input[name="audit"]:checked').value;
+    // 有就 update，沒就 insert
+    let { data: review } = await client.from('student_reviews').select('student_id').eq('student_id', auditStuId).single();
+    if (review) {
+      await client.from('student_reviews').update({ status }).eq('student_id', auditStuId);
+    } else {
+      await client.from('student_reviews').insert({ student_id: auditStuId, status });
+    }
+    reviewMap[auditStuId] = status;
+    renderTable();
+    closeAuditModal();
   }
 
   function setMsg(msg, err) {
     document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
   }
 
-  // 首次載入
+  // =========== 首次載入 ============
   document.addEventListener('DOMContentLoaded', function () {
-    renderTabs();
-    renderSearchField();
     loadData();
+    // 你也可以補 renderSearchField、toggleDeleteMode 相關 UI
   });
-  window.gotoPage = gotoPage;
-  window.expandChars = expandChars;
-  window.expandStudent = expandStudent;
-  window.expandSkills = expandSkills;
-  window.delPlayer = delPlayer;
-  window.delStudent = delStudent;
-  window.searchTable = searchTable;
+  window.toggleStudentCard = toggleStudentCard;
+  window.openAuditModal = openAuditModal;
+  window.closeAuditModal = closeAuditModal;
+  window.saveAuditStatus = saveAuditStatus;
   window.toggleDeleteMode = toggleDeleteMode;
+  window.delStudent = delStudent;
 </script>
 </body>
 </html>

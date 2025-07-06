@@ -138,73 +138,73 @@ th { background: #f4f7fa; font-size: 1em; cursor: pointer; }
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
-  <div class="container">
-    <h2>玩家 / 角色管理後台</h2>
-    <div class="tabs-row">
-      <div class="tabs" id="tabs">
-        <!-- JS 會自動產生分頁按鈕 -->
-      </div>
-      <div>
-        <button id="delete-toggle-btn" class="delete-toggle-btn" type="button">啟用刪除</button>
-        <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
-      </div>
+<div class="container">
+  <h2>玩家 / 角色管理後台</h2>
+  <div class="tabs-row">
+    <div class="tabs" id="tabs">
+      <!-- JS 會自動產生分頁按鈕 -->
     </div>
-
-    <div class="search-row">
-      <select id="search-field"></select>
-      <input id="search" type="text" placeholder="請輸入搜尋內容">
-      <span class="msg" id="msg"></span>
-    </div>
-
-    <!-- 玩家管理分頁 -->
-    <div class="table-wrap" id="players-table-wrap" style="display:none;">
-      <table id="players-table">
-        <thead>
-          <tr>
-            <th>玩家名稱</th>
-            <th>信箱</th>
-            <th>身份</th>
-            <th>持有角色數</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="players-tbody">
-          <!-- JS 動態產生內容 -->
-        </tbody>
-      </table>
-      <div class="pagination" id="players-pagination"></div>
-    </div>
-
-    <!-- 角色管理分頁 -->
-    <div class="role-table-wrap" id="students-table-wrap" style="display:none;">
-      <table class="role-table" id="role-table">
-        <thead>
-          <tr>
-            <th>名字</th>
-            <th>性別</th>
-            <th>陣營</th>
-            <th>狀態</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody id="role-tbody">
-          <!-- JS 動態產生內容 -->
-        </tbody>
-      </table>
-      <div class="pagination" id="students-pagination"></div>
+    <div>
+      <button id="delete-toggle-btn" class="delete-toggle-btn" type="button">啟用刪除</button>
+      <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
     </div>
   </div>
 
-  <!-- 角色管理分頁：審核彈窗 -->
-  <div class="modal-bg" id="review-modal-bg">
-    <div class="modal">
-      <button class="close-btn" type="button">×</button>
-      <h3>審核狀態設定</h3>
-      <div id="review-status-list">
-        <!-- JS 產生 radio 狀態選單 -->
-      </div>
+  <div class="search-row">
+    <select id="search-field"></select>
+    <input id="search" type="text" placeholder="請輸入搜尋內容">
+    <span class="msg" id="msg"></span>
+  </div>
+
+  <!-- 玩家管理分頁 -->
+  <div class="table-wrap" id="players-table-wrap" style="display:none;">
+    <table id="players-table">
+      <thead>
+        <tr>
+          <th>玩家名稱</th>
+          <th>信箱</th>
+          <th>身份</th>
+          <th>持有角色數</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="players-tbody">
+        <!-- JS 動態產生 <tr><td>...</td></tr> 內容 -->
+      </tbody>
+    </table>
+    <div class="pagination" id="players-pagination"></div>
+  </div>
+
+  <!-- 角色管理分頁 -->
+  <div class="role-table-wrap" id="students-table-wrap" style="display:none;">
+    <table class="role-table" id="role-table">
+      <thead>
+        <tr>
+          <th>名字</th>
+          <th>性別</th>
+          <th>陣營</th>
+          <th>狀態</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody id="role-tbody">
+        <!-- JS 動態產生 <tr><td>...</td></tr> 內容 -->
+      </tbody>
+    </table>
+    <div class="pagination" id="students-pagination"></div>
+  </div>
+</div>
+
+<!-- 角色管理分頁：審核彈窗 -->
+<div class="modal-bg" id="review-modal-bg">
+  <div class="modal">
+    <button class="close-btn" type="button">×</button>
+    <h3>審核狀態設定</h3>
+    <div id="review-status-list">
+      <!-- JS 產生 radio 狀態選單 -->
     </div>
   </div>
+</div>
 </body>
 
 
@@ -355,13 +355,12 @@ function renderTable() {
 
 // ========== 玩家管理：表格和角色一覽 ==========
 function renderPlayersTable() {
-  // 這裡**不要渲染任何 <th> 到 <tbody>**，只渲染 <td>
   const fields = TABLES.players.fields;
   let trs = "";
   const start = (currentPage-1)*PAGE_SIZE, end = start+PAGE_SIZE;
-  filteredData.slice(start,end).forEach((row, i) => {
+  filteredData.slice(start, end).forEach((row, i) => {
     trs += "<tr>";
-    fields.forEach(f=>{
+    fields.forEach(f => {
       trs += `<td>${row[f.key]??""}</td>`;
     });
     trs += `<td>
@@ -369,7 +368,7 @@ function renderPlayersTable() {
       ${deleteMode ? `<button class="btn btn-del" onclick="delPlayer('${row.username}')">刪除</button>` : ""}
     </td></tr>`;
 
-    // 展開玩家角色清單（新版格式）
+    // 角色一覽展開區
     if (expandRow && expandRow.id === row.username) {
       trs += `<tr class="expand-row"><td colspan="${fields.length+1}">
         <div class="collapse-content">${expandRow.html}</div>
@@ -379,6 +378,7 @@ function renderPlayersTable() {
   document.getElementById('players-tbody').innerHTML = trs;
   renderPagination("players");
 }
+
 
 async function expandChars(username) {
   if (expandRow && expandRow.id === username) { expandRow = null; renderTable(); return; }

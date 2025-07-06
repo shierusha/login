@@ -271,8 +271,6 @@ function renderTabs() {
     html += `<div class="tab${currentTab === key ? " active" : ""}" data-tab="${key}">${TABLES[key].label}</div>`;
   }
   document.getElementById('tabs').innerHTML = html;
-
-  // tab 切換
   document.querySelectorAll('.tab[data-tab]').forEach(tabBtn => {
     tabBtn.onclick = function () {
       if (currentTab !== tabBtn.dataset.tab) {
@@ -289,8 +287,6 @@ function renderTabs() {
       }
     };
   });
-
-  // 顯示正確的table
   document.getElementById('players-table-wrap').style.display = (currentTab==="players")?"":"none";
   document.getElementById('students-table-wrap').style.display = (currentTab==="students")?"":"none";
 }
@@ -310,7 +306,6 @@ async function loadData() {
   setMsg("資料載入中...");
   expandRow = null; openCardRow = null;
   if (currentTab === "players") {
-    // 取得玩家與角色數
     let { data: players, error } = await client.from("players").select("player_id,username,email,role");
     if (error) return setMsg("玩家讀取失敗：" + error.message, true);
     let { data: chars } = await client.from("students").select("player_id");
@@ -318,7 +313,6 @@ async function loadData() {
     (chars||[]).forEach(c=>{ charMap[c.player_id]=(charMap[c.player_id]||0)+1; });
     rawData = (players||[]).map(p=>({ ...p, char_count: charMap[p.player_id]||0 }));
   } else if (currentTab === "students") {
-    // 取得角色資訊 + 審核狀態
     let { data: students, error } = await client.from("students").select("student_id,name,gender,alignment");
     if (error) return setMsg("角色讀取失敗：" + error.message, true);
     let { data: reviews } = await client.from("student_reviews").select("student_id,status");
@@ -369,7 +363,6 @@ function renderPlayersTable() {
       ${deleteMode ? `<button class="btn btn-del" onclick="delPlayer('${row.username}')">刪除</button>` : ""}
     </td></tr>`;
 
-    // 展開玩家角色清單（新版格式）
     if (expandRow && expandRow.id === row.username) {
       trs += `<tr class="expand-row"><td colspan="${fields.length+1}">
         <div class="collapse-content">${expandRow.html}</div>
@@ -433,7 +426,6 @@ function renderStudentsTable() {
     </td>`;
     trs += "</tr>";
 
-    // 展開學生證內容
     if (openCardRow && openCardRow === row.student_id) {
       trs += `<tr class="expand-row open-card-row"><td colspan="5"><div class="student-card-box">${expandRow.html}</div></td></tr>`;
     }
@@ -446,7 +438,6 @@ async function toggleCardRow(student_id) {
   if (openCardRow === student_id) {
     openCardRow = null; expandRow = null; renderTable(); return;
   }
-  // 取得學生證資料
   let { data: stu } = await client.from("students").select("*").eq("student_id", student_id).single();
   if (!stu) { setMsg("查無學生資料", true); return; }
   let { data: notes } = await client.from("student_notes").select("content,is_public").eq("student_id", student_id);
@@ -503,13 +494,29 @@ function toggleDeleteMode() {
   renderTable();
 }
 
-// ========== 玩家&角色 刪除 ==========
+// ========== 玩家&角色 刪除（加強關聯刪除，避免失敗）==========
 async function delPlayer(username) {
   if (!deleteMode) return;
   if (!confirm('確定要刪除這個玩家（及其所有角色）？')) return;
   let { data: player } = await client.from("players").select("player_id").eq("username", username).single();
   if (!player) return setMsg("查無此玩家",true);
-  await client.from("students").delete().eq("player_id", player.player_id); // 先刪角色
+
+  // 先查所有角色ID
+  let { data: students } = await client.from("students").select("student_id").eq("player_id", player.player_id);
+
+  if (students && students.length) {
+    let ids = students.map(s=>s.student_id);
+    // 刪關聯資料（依照你DB實際有多少表自己加）
+    await client.from("student_notes").delete().in("student_id", ids);
+    await client.from("student_skills").delete().in("student_id", ids);
+    await client.from("student_reviews").delete().in("student_id", ids);
+    // ...如有其他資料表一併刪除
+  }
+
+  // 刪角色
+  await client.from("students").delete().eq("player_id", player.player_id);
+
+  // 最後刪玩家
   let { error } = await client.from("players").delete().eq("player_id", player.player_id);
   if (error) setMsg("刪除失敗: " + error.message,true);
   else setMsg("已刪除玩家及其角色");
@@ -518,6 +525,11 @@ async function delPlayer(username) {
 async function delStudent(student_id) {
   if (!deleteMode) return;
   if (!confirm('確定要刪除這個角色？')) return;
+  // 先刪關聯表
+  await client.from("student_notes").delete().eq("student_id", student_id);
+  await client.from("student_skills").delete().eq("student_id", student_id);
+  await client.from("student_reviews").delete().eq("student_id", student_id);
+  // ...如有其他資料表一併刪除
   let { error } = await client.from("students").delete().eq("student_id", student_id);
   if (error) setMsg("刪除失敗: " + error.message,true);
   else setMsg("已刪除角色");
@@ -603,7 +615,6 @@ document.addEventListener('DOMContentLoaded', function () {
   loadData();
   document.getElementById('search').oninput = searchTable;
   document.getElementById('delete-toggle-btn').onclick = toggleDeleteMode;
-  // modal 關閉
   document.querySelector('.modal-bg .close-btn').onclick = closeReviewModal;
 });
 

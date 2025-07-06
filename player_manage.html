@@ -419,7 +419,7 @@ function renderStudentsTable() {
   const fields = TABLES.students.fields;
   let trs = "";
   const start = (currentPage-1)*PAGE_SIZE, end = start+PAGE_SIZE;
-  filteredData.slice(start,end).forEach((row, i) => {
+  filteredData.slice(start, end).forEach((row, i) => {
     trs += "<tr>";
     trs += `<td>${row.name||''}</td>`;
     trs += `<td>${getGender(row.gender)}</td>`;
@@ -432,7 +432,7 @@ function renderStudentsTable() {
     </td>`;
     trs += "</tr>";
 
-    // 展開學生證內容
+    // 學生證展開區
     if (openCardRow && openCardRow === row.student_id) {
       trs += `<tr class="expand-row open-card-row"><td colspan="5"><div class="student-card-box">${expandRow.html}</div></td></tr>`;
     }
@@ -440,6 +440,7 @@ function renderStudentsTable() {
   document.getElementById('role-tbody').innerHTML = trs;
   renderPagination("students");
 }
+
 
 async function toggleCardRow(student_id) {
   if (openCardRow === student_id) {

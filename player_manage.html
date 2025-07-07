@@ -427,7 +427,7 @@ function renderStudentsTable() {
     trs += `<td>${getAlignment(row.alignment)}</td>`;
     trs += `<td>${getReviewStatus(row.review_status)}</td>`;
     trs += `<td>
-      <button class="btn btn-link" onclick="toggleCardRow('${row.student_id}')">學生證</button>
+      <button class="btn btn-link" onclick="openStudentCard('${row.student_id}')">學生證</button>
       <button class="btn btn-edit" onclick="openReviewModal('${row.student_id}')">審核</button>
       ${deleteMode ? `<button class="btn btn-del show" onclick="delStudent('${row.student_id}')">刪除</button>` : ""}
     </td>`;
@@ -527,7 +527,6 @@ async function delStudent(student_id) {
 
 // ========== 學生證（新分頁打開） ==========
 async function openStudentCard(student_id) {
-  // 讀出學號
   let { data } = await client.from("students").select("student_code").eq("student_id", student_id).single();
   if(data && data.student_code){
     window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?sid=${encodeURIComponent(data.student_code)}`, "_blank");

@@ -526,9 +526,16 @@ async function delStudent(student_id) {
 }
 
 // ========== 學生證（新分頁打開） ==========
-function openStudentCard(student_id) {
-  window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?sid=${student_id}`, "_blank");
+async function openStudentCard(student_id) {
+  // 讀出學號
+  let { data } = await client.from("students").select("student_code").eq("student_id", student_id).single();
+  if(data && data.student_code){
+    window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?sid=${encodeURIComponent(data.student_code)}`, "_blank");
+  } else {
+    window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?sid=${student_id}`, "_blank");
+  }
 }
+
 
 // ========== 角色管理：審核彈窗 ==========
 let reviewStudentId = null, reviewStatusValue = null;
@@ -542,9 +549,16 @@ async function openReviewModal(student_id) {
   reviewStudentId = student_id;
   let { data } = await client.from("student_reviews").select("status").eq("student_id", student_id).single();
   reviewStatusValue = (data && data.status) || "WAIT";
+  // 取得學生原本學號
+  let { data: stu } = await client.from("students").select("student_code").eq("student_id", student_id).single();
   renderReviewRadio();
   document.getElementById('review-modal-bg').style.display = 'flex';
+  if(stu && stu.student_code){
+    document.getElementById('student-code-input').value = stu.student_code;
+  }
 }
+
+
 function renderReviewRadio() {
   let html = reviewStatusEnum.map(st =>
     `<div class="radio-row">
@@ -554,24 +568,29 @@ function renderReviewRadio() {
       </label>
     </div>`
   ).join('');
+  html += `
+    <div class="radio-row">
+      <label>
+        學號（唯一）：
+        <input type="text" id="student-code-input" style="margin-left:0.5em;" placeholder="請輸入學號">
+      </label>
+      <div id="student-code-msg" style="color:#d44;margin-top:0.3em;"></div>
+    </div>
+    <div style="margin-top:1em;">
+      <button class="btn btn-edit" onclick="saveReviewStatus()">儲存</button>
+    </div>
+  `;
   document.getElementById('review-status-list').innerHTML = html;
 }
+
 function closeReviewModal() {
   document.getElementById('review-modal-bg').style.display = 'none';
   reviewStudentId = null;
 }
-async function setReviewStatus(val) {
+function setReviewStatus(val) {
   reviewStatusValue = val;
-  let { data } = await client.from("student_reviews").select("student_id").eq("student_id", reviewStudentId).single();
-  if (data) {
-    await client.from("student_reviews").update({status: val}).eq("student_id", reviewStudentId);
-  } else {
-    await client.from("student_reviews").insert({student_id: reviewStudentId, status: val});
-  }
-  closeReviewModal();
-  loadData();
+  // 不做其他動作，只記住 radio 當前值即可
 }
-
 // ========== 狀態格式化 ==========
 function getGender(g) {
   if (g === "M") return "男";
@@ -608,6 +627,37 @@ document.addEventListener('DOMContentLoaded', function () {
   document.querySelector('.modal-bg .close-btn').onclick = closeReviewModal;
 });
 
+
+  async function saveReviewStatus() {
+  const codeInput = document.getElementById('student-code-input');
+  const codeMsg = document.getElementById('student-code-msg');
+  const student_code = (codeInput.value || '').trim();
+  // 只有狀態設為「通過」才檢查學號
+  if(reviewStatusValue === "PASS") {
+    if(!student_code) {
+      codeMsg.textContent = "請輸入學號";
+      return;
+    }
+    // 檢查唯一性
+    let { data, error } = await client.from("students").select("student_id").eq("student_code", student_code).neq("student_id", reviewStudentId).single();
+    if(data) {
+      codeMsg.textContent = "學號重複，請換一個";
+      return;
+    }
+    // 更新學號
+    await client.from("students").update({student_code}).eq("student_id", reviewStudentId);
+  }
+
+  // 更新審核狀態
+  let { data } = await client.from("student_reviews").select("student_id").eq("student_id", reviewStudentId).single();
+  if (data) {
+    await client.from("student_reviews").update({status: reviewStatusValue}).eq("student_id", reviewStudentId);
+  } else {
+    await client.from("student_reviews").insert({student_id: reviewStudentId, status: reviewStatusValue});
+  }
+  closeReviewModal();
+  loadData();
+}
 // ========== for window scope（必要給HTML inline handler呼叫）==========
 window.gotoPage = gotoPage;
 window.expandChars = expandChars;
@@ -619,6 +669,7 @@ window.delPlayer = delPlayer;
 window.delStudent = delStudent;
 window.openStudentCard = openStudentCard;
 window.searchTable = searchTable;
+window.saveReviewStatus = saveReviewStatus;
 
 
 </script>

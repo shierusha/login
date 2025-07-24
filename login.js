@@ -79,7 +79,7 @@ async function handleForgot(e) {
   }
   document.getElementById('forgot-btn').classList.add('loading');
   const { error } = await client.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://shierusha.github.io/login/reset.html'
+    redirectTo: 'https://shierusha.github.io/login/reset'
   });
   document.getElementById('forgot-btn').classList.remove('loading');
   if (error) {
@@ -108,7 +108,7 @@ async function signUp() {
       email,
       password,
       options: {
-        emailRedirectTo: 'https://shierusha.github.io/login/reset.html'
+        emailRedirectTo: 'https://shierusha.github.io/login/reset'
       }
     }));
   } catch (e) {
@@ -204,11 +204,11 @@ async function signIn() {
   // 依照身份自動導頁
   if (player.role === 'admin') {
     setTimeout(() => {
-      window.location.href = 'admin.html'; // 這裡改成你管理頁網址
+      window.location.href = 'admin'; // 這裡改成你管理頁網址
     }, 600);
   } else {
     setTimeout(() => {
-      window.location.href = 'https://shierusha.github.io/create-student/player.html'; // 這裡是玩家首頁
+      window.location.href = 'https://shierusha.github.io/create-student/player'; // 這裡是玩家首頁
     }, 600);
   }
 }

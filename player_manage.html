@@ -510,33 +510,40 @@ async function deepDeleteStudent(student_id) {
   const customEffectIds = (skills || []).map(s => s.custom_skill_uuid).filter(Boolean);
   const passiveTriggerIds = (skills || []).map(s => s.passive_trigger_id).filter(Boolean);
 
-  // 2. 刪 student_skill_effect_links / student_skill_debuff_links
+  // 2. 刪 skill links
   if (skillIds.length) {
     await client.from("student_skill_effect_links").delete().in("skill_id", skillIds);
     await client.from("student_skill_debuff_links").delete().in("skill_id", skillIds);
+    console.log("已刪 links", skillIds);
   }
 
   // 3. 刪 student_skills
   await client.from("student_skills").delete().eq("student_id", student_id);
+  console.log("已刪 skills", student_id);
 
-  // 4. 刪 passive_trigger（只刪這些）
+  // 4. 刪 passive_trigger
   if (passiveTriggerIds.length) {
     await client.from("passive_trigger").delete().in("trigger_id", passiveTriggerIds);
+    console.log("已刪 passive", passiveTriggerIds);
   }
 
-  // 5. 刪 skill_effects（custom only，移動不可刪）
+  // 5. 刪 skill_effects（只 custom）
   if (customEffectIds.length) {
     await client.from("skill_effects").delete().in("effect_id", customEffectIds);
+    console.log("已刪 custom effects", customEffectIds);
   }
 
-  // 6. 刪 student_reviews、student_notes、student_images
+  // 6. 刪 reviews、notes、images
   await client.from("student_reviews").delete().eq("student_id", student_id);
   await client.from("student_notes").delete().eq("student_id", student_id);
   await client.from("student_images").delete().eq("student_id", student_id);
 
-  // 7. 最後刪學生本身
+  // 7. 刪學生本體
   await client.from("students").delete().eq("student_id", student_id);
+
+  console.log("角色全部刪除完成", student_id);
 }
+
 
 async function delPlayer(username) {
   if (!deleteMode) return;

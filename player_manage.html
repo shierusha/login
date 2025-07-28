@@ -582,6 +582,7 @@ async function openStudentCard(student_id) {
 // ========== 角色管理：審核彈窗 ==========
 let reviewStudentId = null, reviewStatusValue = null;
 const reviewStatusEnum = [
+  {key: "", label: "未審核"}, 
   {key: "PASS", label: "已通過"},
   {key: "WAIT", label: "審核中"},
   {key: "BAD", label: "未通過"}
@@ -695,22 +696,24 @@ async function saveReviewStatus() {
   let { data: adminData } = await client.from('players').select('player_id').eq('email', user.email).single();
   let reviewer_id = adminData ? adminData.player_id : null;
 
-  // 更新審核狀態
-  let { data } = await client.from("student_reviews").select("student_id").eq("student_id", reviewStudentId).single();
-  if (data) {
-    await client.from("student_reviews").update({
-      status: reviewStatusValue,
-      reviewer_id: reviewer_id
-    }).eq("student_id", reviewStudentId);
-  } else {
-    await client.from("student_reviews").insert({
-      student_id: reviewStudentId,
-      status: reviewStatusValue,
-      reviewer_id: reviewer_id
-    });
-  }
-  closeReviewModal();
-  loadData();
+// 更新審核狀態
+let { data } = await client.from("student_reviews").select("student_id").eq("student_id", reviewStudentId).single();
+let statusValue = reviewStatusValue || null;  // 將空字串轉為 NULL
+if (data) {
+  await client.from("student_reviews").update({
+    status: statusValue,
+    reviewer_id: reviewer_id
+  }).eq("student_id", reviewStudentId);
+} else {
+  await client.from("student_reviews").insert({
+    student_id: reviewStudentId,
+    status: statusValue,
+    reviewer_id: reviewer_id
+  });
+}
+closeReviewModal();
+loadData();
+
 }
 
 // ========== for window scope（必要給HTML inline handler呼叫）==========

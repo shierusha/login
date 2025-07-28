@@ -698,27 +698,19 @@ async function saveReviewStatus() {
 
 // 更新審核狀態
 let { data } = await client.from("student_reviews").select("student_id").eq("student_id", reviewStudentId).single();
-let statusValue = reviewStatusValue || null;
-
-const updateData = {
-  status: statusValue
-};
-
-if (statusValue === "PASS") {
-  updateData.reviewer_id = reviewer_id;
-} else {
-  updateData.reviewer_id = null; 
-}
-
+let statusValue = reviewStatusValue || null;  // 將空字串轉為 NULL
 if (data) {
-  await client.from("student_reviews").update(updateData).eq("student_id", reviewStudentId);
+  await client.from("student_reviews").update({
+    status: statusValue,
+    reviewer_id: reviewer_id
+  }).eq("student_id", reviewStudentId);
 } else {
   await client.from("student_reviews").insert({
     student_id: reviewStudentId,
-    ...updateData
+    status: statusValue,
+    reviewer_id: reviewer_id
   });
 }
-
 closeReviewModal();
 loadData();
 

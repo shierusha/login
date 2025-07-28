@@ -142,6 +142,8 @@ async function signUp() {
     return;
   }
   if (insertError) {
+      console.error('Insert player error:', insertError); // 新增這行
+
     document.getElementById('signup-msg').textContent = '玩家資料儲存失敗: ' + transErrorMsg(insertError.message);
     setLoading(false);
     return;

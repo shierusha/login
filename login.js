@@ -1,3 +1,5 @@
+console.log('supabase client:', client);
+
 // ====== Supabase 設定 ======
 const client = window.supabase.createClient(
   'https://wfhwhvodgikpducrhgda.supabase.co',

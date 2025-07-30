@@ -503,34 +503,38 @@ function toggleDeleteMode() {
 
 // ========== 玩家&角色 刪除（完整刪除功能）==========
 
+// ========== 玩家&角色 刪除（完整刪除功能，順序更安全）==========
+
 async function deepDeleteStudent(student_id) {
-  // 1. 查出所有舊的技能（含 id, custom_skill_uuid, passive_trigger_id）
+  // 1. 查出所有舊技能（含 id, custom_skill_uuid, passive_trigger_id）
   const { data: skills } = await client
     .from("student_skills")
     .select("id, custom_skill_uuid, passive_trigger_id")
     .eq("student_id", student_id);
 
-  // 2. 整理所有相關 id
   const skillIds = (skills || []).map(s => s.id);
   const customEffectIds = (skills || []).map(s => s.custom_skill_uuid).filter(Boolean);
   const passiveTriggerIds = (skills || []).map(s => s.passive_trigger_id).filter(Boolean);
 
-  // 3. 批量刪除所有關聯資料（只要 id 不為空就 in() 批量砍）
+  // 2. 刪技能連結表（先砍所有 FK 依賴）
   if (skillIds.length) {
     await client.from("student_skill_effect_links").delete().in("skill_id", skillIds);
     await client.from("student_skill_debuff_links").delete().in("skill_id", skillIds);
   }
-  if (passiveTriggerIds.length) {
-    await client.from("passive_trigger").delete().in("trigger_id", passiveTriggerIds);
+  // 3. 砍掉所有技能本體（這時後面都沒人 reference skill_effects、passive_trigger 了！）
+  if (skillIds.length) {
+    await client.from("student_skills").delete().in("id", skillIds);
   }
+
+  // 4. 再砍這角色用到的 skill_effects、passive_trigger（沒人用，1對1可放心砍！）
   if (customEffectIds.length) {
     await client.from("skill_effects").delete().in("effect_id", customEffectIds);
   }
+  if (passiveTriggerIds.length) {
+    await client.from("passive_trigger").delete().in("trigger_id", passiveTriggerIds);
+  }
 
-  // 4. 最後刪技能本體
-  await client.from("student_skills").delete().eq("student_id", student_id);
-
-  // 5. 刪 reviews、notes、images
+  // 5. 其他資料
   await client.from("student_reviews").delete().eq("student_id", student_id);
   await client.from("student_notes").delete().eq("student_id", student_id);
   await client.from("student_images").delete().eq("student_id", student_id);
@@ -538,9 +542,8 @@ async function deepDeleteStudent(student_id) {
   // 6. 刪學生本體
   await client.from("students").delete().eq("student_id", student_id);
 
-  console.log("角色全部刪除完成", student_id);
+  console.log("角色完全刪除乾淨", student_id);
 }
-
 
 async function delPlayer(username) {
   if (!deleteMode) return;

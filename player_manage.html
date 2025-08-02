@@ -521,12 +521,12 @@ async function deepDeleteStudent(student_id) {
     await client.from("student_skill_effect_links").delete().in("skill_id", skillIds);
     await client.from("student_skill_debuff_links").delete().in("skill_id", skillIds);
   }
-  // 3. 砍掉所有技能本體（這時後面都沒人 reference skill_effects、passive_trigger 了！）
+  // 3. 砍掉所有技能本體
   if (skillIds.length) {
     await client.from("student_skills").delete().in("id", skillIds);
   }
 
-  // 4. 再砍這角色用到的 skill_effects、passive_trigger（沒人用，1對1可放心砍！）
+  // 4. 再砍這角色用到的 skill_effects、passive_trigger
   if (customEffectIds.length) {
     await client.from("skill_effects").delete().in("effect_id", customEffectIds);
   }
@@ -534,16 +534,30 @@ async function deepDeleteStudent(student_id) {
     await client.from("passive_trigger").delete().in("trigger_id", passiveTriggerIds);
   }
 
-  // 5. 其他資料
+  // 5. 刪除 Storage 的圖片本體（這段是新加的！）
+  const { data: images } = await client
+    .from("student_images")
+    .select("image_url")
+    .eq("student_id", student_id);
+
+  if (images && images.length > 0) {
+    const filesToDelete = images.map(img => img.image_url);
+    if (filesToDelete.length > 0) {
+      await client.storage.from('student-img').remove(filesToDelete);
+    }
+  }
+
+  // 6. 刪除表內其他資料
   await client.from("student_reviews").delete().eq("student_id", student_id);
   await client.from("student_notes").delete().eq("student_id", student_id);
   await client.from("student_images").delete().eq("student_id", student_id);
 
-  // 6. 刪學生本體
+  // 7. 刪學生本體
   await client.from("students").delete().eq("student_id", student_id);
 
   console.log("角色完全刪除乾淨", student_id);
 }
+
 
 async function delPlayer(username) {
   if (!deleteMode) return;

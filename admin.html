@@ -44,6 +44,45 @@
       location.href = 'login.html';
     }
     checkAdmin();
+  </script>  <script>
+// 設定目標 Supabase 的網址與 key（建議用 Service Role Key，這裡只是範例）
+// 切記真的部署時 Service Role Key 不建議放前端
+const GACHA_SUPABASE_URL = 'https://你的supabase網址.supabase.co';
+const GACHA_SUPABASE_KEY = '你的gacha supabase public or service key';
+
+async function sendGachaToken() {
+  // 取得使用者 access_token
+  let { data: { session }, error } = await client.auth.getSession();
+  if (error || !session) {
+    alert('尚未登入，請重新登入');
+    return;
+  }
+  let token = session.access_token;
+
+  // 這邊你可自訂傳什麼資料，這裡直接只傳 token
+  let payload = {
+    token: token,
+    timestamp: new Date().toISOString()
+  };
+
+  // 使用 fetch 傳送到 gacha supabase 的 table
+  let { error: insertError } = await fetch(`${GACHA_SUPABASE_URL}/rest/v1/gacha_tokens`, {
+    method: "POST",
+    headers: {
+      "apikey": GACHA_SUPABASE_KEY,
+      "Authorization": `Bearer ${GACHA_SUPABASE_KEY}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal"
+    },
+    body: JSON.stringify(payload)
+  }).then(res => res.ok ? null : res.json());
+
+  if (!insertError) {
+    alert('扭蛋TOKEN已送出！（開發中）');
+  } else {
+    alert('送出失敗：' + JSON.stringify(insertError));
+  }
+}
   </script>
 </body>
 </html>

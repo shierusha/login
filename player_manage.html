@@ -591,9 +591,9 @@ async function delStudent(student_id) {
 async function openStudentCard(student_id) {
   let { data } = await client.from("students").select("student_code").eq("student_id", student_id).single();
   if(data && data.student_code){
-    window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?sid=${encodeURIComponent(data.student_code)}`, "_blank");
+    window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?stu=${encodeURIComponent(data.student_code)}`, "_blank");
   } else {
-    window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?sid=${student_id}`, "_blank");
+    window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?stu=${student_id}`, "_blank");
   }
 }
 

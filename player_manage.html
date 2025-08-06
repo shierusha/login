@@ -464,13 +464,13 @@ function renderStudentsTable() {
   let slice = filteredData.slice(start, end);
 
   slice.forEach((row, i) => {
-    if(row.__isPlayer) {
-      trs += `<tr style="background:#f4f7fa;">
-        <td colspan="5" style="font-weight:bold;font-size:1.1em;color:#3d648d;">
-          ${row.username}
-        </td></tr>`;
-      return;
-    }
+if(row.__isPlayer) {
+  trs += `<tr>
+    <td colspan="5" style="font-weight:bold;font-size:1.1em;color:#3d648d;">
+      ${row.username}
+    </td></tr>`;
+  return;
+}
     trs += "<tr>";
     trs += `<td>${row.name||''}</td>`;
     trs += `<td>${getGender(row.gender)}</td>`;
@@ -507,17 +507,27 @@ async function toggleCardRow(student_id) {
     .select("content,is_public,sort_order,type")
     .eq("student_id", student_id);
 
-  // sort_order 排序
   notes = (notes || []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  // 依公開/私有分類
+  const publicNotes = notes.filter(n => n.is_public);
+  const privateNotes = notes.filter(n => !n.is_public);
 
   let html = `
     <div style="padding-left:0.5em;">
-      <ul style="margin:0;padding:0;list-style:none;">
-        ${notes.length ? notes.map(n =>
-          `<li style="margin:0.3em 0;white-space:pre-line;"
-              data-type="${escapeHTML(n.type||'')}"
-              data-is-public="${n.is_public ? 1 : 0}">
-            ${n.is_public ? '# ' : '? '}${escapeHTML(n.content)}
+      <div><b># 設定</b></div>
+      <ul style="margin:0;padding:0 0 0 1em;list-style:none;">
+        ${publicNotes.length ? publicNotes.map(n =>
+          `<li style="margin:0.3em 0;white-space:pre-line;">
+            ${escapeHTML(n.content)}
+          </li>`
+        ).join('') : '<li>（無）</li>'}
+      </ul>
+      <div style="margin-top:0.8em;"><b>? 裏設定</b></div>
+      <ul style="margin:0;padding:0 0 0 1em;list-style:none;">
+        ${privateNotes.length ? privateNotes.map(n =>
+          `<li style="margin:0.3em 0;white-space:pre-line;color:#888;">
+            ${escapeHTML(n.content)}
           </li>`
         ).join('') : '<li>（無）</li>'}
       </ul>

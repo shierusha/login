@@ -479,7 +479,7 @@ if(row.__isPlayer) {
     trs += `<td>
       <button class="btn btn-link" onclick="openStudentCard('${row.student_id}')">學生證</button>
       <button class="btn btn-edit" onclick="openReviewModal('${row.student_id}')">審核</button>
-      <button class="btn" style="margin-left:0.4em;background:#ffc940;color:#333" onclick="toggleCardRow('${row.student_id}')">#設定/?裏設定</button>
+      <button class="btn" style="margin-left:0.4em;background:#ffc940;color:#333" onclick="toggleCardRow('${row.student_id}')">設定/裏設定</button>
       ${deleteMode ? `<button class="btn btn-del show" onclick="delStudent('${row.student_id}')">刪除</button>` : ""}
     </td>`;
     trs += "</tr>";

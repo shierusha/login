@@ -209,30 +209,57 @@ th { background: #f4f7fa; font-size: 1em; cursor: pointer; }
 </body>
 
 <script>
-window.supabase = window.supabase || supabase;
-window.client = window.supabase.createClient(
-  'https://wfhwhvodgikpducrhgda.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
-);
-//角色卡ID
-// ====== 白名單與特殊玩家設定 ======
+// ========== 全域常數 ==========
+// 白名單 student_id
 const TEST_STUDENT_IDS = [
   '434cbc99-9a4f-4334-bc71-7236b8daf51c', // 777
   '6ceb01f3-d296-438f-be5a-eebfa6e30e41', // 夢荔枝
-  '845dd04d-ff39-43a8-ad84-e8f714a8b454', //工具寵
-  'fe4e4c3e-66ae-4ded-afe6-417f73979131', //梨
-  '7712a95b-7884-4e34-8dba-65ff01084b16', //咕咕
-  'ee8ea0cd-d664-4b5f-8d0e-0240bf9debdb' //現荔枝
+  '845dd04d-ff39-43a8-ad84-e8f714a8b454', // 工具寵
+  'fe4e4c3e-66ae-4ded-afe6-417f73979131', // 梨
+  '7712a95b-7884-4e34-8dba-65ff01084b16', // 咕咕
+  'ee8ea0cd-d664-4b5f-8d0e-0240bf9debdb' // 現荔枝
 ];
+// 白名單 player_id
 const SPECIAL_PLAYER_ID = '8aea3076-294c-41f6-bb38-0a99da77c098';
 
-// ====== 其餘常數 ======
+// ========== Supabase 初始化 ==========
+const client = window.supabase.createClient(
+  'https://wfhwhvodgikpducrhgda.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
+);
+
+// ========== 權限檢查 ==========
+async function checkAdmin() {
+  let { data: { user } } = await client.auth.getUser();
+  if (!user) { alert('請先登入！'); location.href='login.html'; return; }
+  let { data, error } = await client.from('players').select('username,role').eq('email', user.email).single();
+  if (error || !data) { alert('帳號資料錯誤，請重新登入'); location.href='login.html'; return; }
+  if (data.role !== 'admin') { alert('你不是管理員，無權進入'); location.href='login.html'; return; }
+}
+checkAdmin();
+
+// ========== 常數與狀態 ==========
 const PAGE_SIZE = 10;
-let currentTab = "students";
+let currentTab = "players";
 let rawData = [], filteredData = [], currentPage = 1, expandRow = null, openCardRow = null;
 let deleteMode = false;
 
+// ========== 分頁定義 ==========
 const TABLES = {
+  players: {
+    label: "玩家管理",
+    fields: [
+      { key: "username", name: "玩家名稱" },
+      { key: "email", name: "信箱" },
+      { key: "role", name: "身份" },
+      { key: "char_count", name: "持有角色數" }
+    ],
+    search: [
+      { key: "username", name: "玩家名稱" },
+      { key: "email", name: "信箱" },
+      { key: "role", name: "身份" }
+    ]
+  },
   students: {
     label: "角色管理",
     fields: [
@@ -250,99 +277,187 @@ const TABLES = {
   }
 };
 
-// ====== 分頁/搜尋等 ======
+// ========== 分頁切換 ==========
 function renderTabs() {
-  let html = `<div class="tab active" data-tab="students">${TABLES.students.label}</div>`;
+  let html = "";
+  for (let key in TABLES) {
+    html += `<div class="tab${currentTab === key ? " active" : ""}" data-tab="${key}">${TABLES[key].label}</div>`;
+  }
   document.getElementById('tabs').innerHTML = html;
-  document.getElementById('players-table-wrap').style.display = "none";
-  document.getElementById('students-table-wrap').style.display = "";
+  document.querySelectorAll('.tab[data-tab]').forEach(tabBtn => {
+    tabBtn.onclick = function () {
+      if (currentTab !== tabBtn.dataset.tab) {
+        currentTab = tabBtn.dataset.tab;
+        renderTabs();
+        renderSearchField();
+        document.getElementById('search').value = '';
+        currentPage = 1;
+        expandRow = null;
+        openCardRow = null;
+        document.getElementById('players-table-wrap').style.display = (currentTab==="players")?"":"none";
+        document.getElementById('students-table-wrap').style.display = (currentTab==="students")?"":"none";
+        loadData();
+      }
+    };
+  });
+  document.getElementById('players-table-wrap').style.display = (currentTab==="players")?"":"none";
+  document.getElementById('students-table-wrap').style.display = (currentTab==="students")?"":"none";
 }
+
+// ========== 搜尋欄渲染 ==========
 function renderSearchField() {
-  const searchFields = TABLES.students.search;
+  const searchFields = TABLES[currentTab].search;
   let html = '';
   searchFields.forEach(sf=>{
     html += `<option value="${sf.key}">${sf.name}</option>`;
   });
   document.getElementById('search-field').innerHTML = html;
 }
-function searchTable() {
-  const field = document.getElementById('search-field').value;
-  const kw = document.getElementById('search').value.trim().toLowerCase();
-  if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
-  filteredData = rawData.filter(row => {
-    if (row.__isPlayer) return true;
-    return String(row[field]??"").toLowerCase().includes(kw);
-  });
-  currentPage = 1;
-  renderTable();
-}
-function renderTable() {
-  renderStudentsTable();
-}
-function renderPagination(tab) {
-  const data = filteredData;
-  const tbodyId = "students-pagination";
-  const pageCount = Math.ceil(data.length / PAGE_SIZE) || 1;
-  let html = '';
-  for (let i = 1; i <= pageCount; i++) {
-    html += `<button ${i === currentPage ? 'class="active"' : ''} onclick="gotoPage(${i})">${i}</button>`;
-  }
-  document.getElementById(tbodyId).innerHTML = html;
-}
-function gotoPage(p) { currentPage = p; renderTable(); }
 
-// ====== 資料載入、排序、分群 ======
+// ========== 資料載入 ==========
 async function loadData() {
   setMsg("資料載入中...");
   expandRow = null; openCardRow = null;
+  if (currentTab === "players") {
+    // 取得玩家與角色數
+    let { data: players, error } = await client.from("players").select("player_id,username,email,role");
+    if (error) return setMsg("玩家讀取失敗：" + error.message, true);
+    let { data: chars } = await client.from("students").select("player_id");
+    let charMap = {};
+    (chars||[]).forEach(c=>{ charMap[c.player_id]=(charMap[c.player_id]||0)+1; });
+    rawData = (players||[]).map(p=>({ ...p, char_count: charMap[p.player_id]||0 }));
+  } else if (currentTab === "students") {
+    // 取得學生，加入玩家名，review 狀態
+    let { data: students, error } = await client
+      .from("students")
+      .select("student_id,name,gender,alignment,player_id")
+      .order("player_id", { ascending: true })
+      .order("name", { ascending: true });
 
-  // 拉所有學生（含 player_id）、玩家名
-  let { data: students, error } = await client
-    .from("students")
-    .select("student_id,name,gender,alignment,player_id")
-    .order("player_id", { ascending: true })
-    .order("name", { ascending: true });
-  if (error) return setMsg("角色讀取失敗：" + error.message, true);
+    let { data: players } = await client.from("players").select("player_id,username");
+    let playerMap = {};
+    (players||[]).forEach(p=>playerMap[p.player_id]=p.username);
 
-  // 取得玩家名
-  let { data: players } = await client.from("players").select("player_id,username");
-  let playerMap = {};
-  (players||[]).forEach(p=>playerMap[p.player_id]=p.username);
+    // 白名單與特殊玩家ID過濾
+    students = (students||[]).filter(
+      s => !TEST_STUDENT_IDS.includes(s.student_id) && s.player_id !== SPECIAL_PLAYER_ID
+    );
 
-  // 白名單與特殊玩家過濾
-  students = (students||[]).filter(
-    s => !TEST_STUDENT_IDS.includes(s.student_id) && s.player_id !== SPECIAL_PLAYER_ID
-  );
+    // 取得 review 狀態
+    let { data: reviews } = await client.from("student_reviews").select("student_id,status");
+    let reviewMap = {};
+    (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
 
-  // 取得 review 狀態
-  let { data: reviews } = await client.from("student_reviews").select("student_id,status");
-  let reviewMap = {};
-  (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
-
-  // 分群組
-  let grouped = {};
-  students.forEach(s=>{
-    const uname = playerMap[s.player_id] || "未知玩家";
-    if(!grouped[uname]) grouped[uname] = [];
-    grouped[uname].push({
-      ...s,
-      review_status: reviewMap[s.student_id] || "未審核"
+    // 玩家分群
+    let grouped = {};
+    students.forEach(s=>{
+      const uname = playerMap[s.player_id] || "未知玩家";
+      if(!grouped[uname]) grouped[uname] = [];
+      grouped[uname].push({
+        ...s,
+        review_status: reviewMap[s.student_id] || "未審核"
+      });
     });
-  });
 
-  // 組成 rawData (分群)
-  rawData = [];
-  Object.keys(grouped).sort().forEach(uname=>{
-    rawData.push({__isPlayer: true, username: uname});
-    grouped[uname].forEach(stu=>rawData.push(stu));
-  });
-
+    // 分群排序
+    rawData = [];
+    Object.keys(grouped).sort().forEach(uname=>{
+      rawData.push({__isPlayer: true, username: uname});
+      grouped[uname].forEach(stu=>rawData.push(stu));
+    });
+  }
   filteredData = rawData;
   renderTable();
   setMsg("");
 }
 
-// ====== 角色管理分群顯示 ======
+// ========== 搜尋/分頁 ==========
+function searchTable() {
+  const field = document.getElementById('search-field').value;
+  const kw = document.getElementById('search').value.trim().toLowerCase();
+  if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
+  filteredData = rawData.filter(row =>
+    row.__isPlayer ? false : String(row[field]??"").toLowerCase().includes(kw)
+  );
+  // 讓玩家標題也跟著出現（分群時）
+  let shownPlayers = new Set(filteredData.map(r=>r.player_id));
+  filteredData = rawData.filter(row =>
+    (row.__isPlayer && shownPlayers.has(row.player_id)) || !row.__isPlayer
+  );
+  currentPage = 1;
+  renderTable();
+}
+
+// ========== 主表格渲染 ==========
+function renderTable() {
+  if (currentTab === "players") {
+    renderPlayersTable();
+  } else if (currentTab === "students") {
+    renderStudentsTable();
+  }
+}
+
+// ========== 玩家管理：表格和角色一覽 ==========
+function renderPlayersTable() {
+  const fields = TABLES.players.fields;
+  let trs = "";
+  const start = (currentPage-1)*PAGE_SIZE, end = start+PAGE_SIZE;
+  filteredData.slice(start, end).forEach((row, i) => {
+    trs += "<tr>";
+    fields.forEach(f => {
+      trs += `<td>${row[f.key]??""}</td>`;
+    });
+    trs += `<td>
+      <button class="btn" onclick="expandChars('${row.username}')">角色一覽</button>
+      ${deleteMode ? `<button class="btn btn-del show" onclick="delPlayer('${row.username}')">刪除</button>` : ""}
+    </td></tr>`;
+
+    // 角色一覽展開區
+    if (expandRow && expandRow.id === row.username) {
+      trs += `<tr class="expand-row"><td colspan="${fields.length+1}">
+        <div class="collapse-content">${expandRow.html}</div>
+      </td></tr>`;
+    }
+  });
+  document.getElementById('players-tbody').innerHTML = trs;
+  renderPagination("players");
+}
+
+async function expandChars(username) {
+  if (expandRow && expandRow.id === username) { expandRow = null; renderTable(); return; }
+  let { data: player } = await client.from("players").select("player_id").eq("username", username).single();
+  if (!player) return setMsg("找不到玩家",true);
+  let { data: chars } = await client.from("students").select("student_id,name,gender,alignment").eq("player_id", player.player_id);
+  let { data: reviews } = await client.from("student_reviews").select("student_id,status");
+  let reviewMap = {};
+  (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
+
+  let html = `<div style="font-weight:700;margin-bottom:.7em;">持有角色：</div>
+    <table style="width:100%;border-collapse:collapse;">
+      <tr>
+        <th>名字</th>
+        <th>性別</th>
+        <th>陣營</th>
+        <th>狀態</th>
+        <th>操作</th>
+      </tr>
+      ${(chars||[]).map(c=>
+        `<tr>
+          <td>${c.name}</td>
+          <td>${getGender(c.gender)}</td>
+          <td>${getAlignment(c.alignment)}</td>
+          <td>${getReviewStatus(c.student_id ? reviewMap[c.student_id] : "")}</td>
+          <td>
+            <button class="btn btn-link" onclick="openStudentCard('${c.student_id}')">學生證</button>
+          </td>
+        </tr>`
+      ).join("")}
+    </table>`;
+  expandRow = { id: username, html };
+  renderTable();
+}
+
+// ========== 角色管理：分群顯示 ==========
 function renderStudentsTable() {
   let trs = "";
   const start = (currentPage-1)*PAGE_SIZE, end = start+PAGE_SIZE;
@@ -356,7 +471,6 @@ function renderStudentsTable() {
         </td></tr>`;
       return;
     }
-    // 角色顯示
     trs += "<tr>";
     trs += `<td>${row.name||''}</td>`;
     trs += `<td>${getGender(row.gender)}</td>`;
@@ -365,24 +479,29 @@ function renderStudentsTable() {
     trs += `<td>
       <button class="btn btn-link" onclick="openStudentCard('${row.student_id}')">學生證</button>
       <button class="btn btn-edit" onclick="openReviewModal('${row.student_id}')">審核</button>
+      <button class="btn" style="margin-left:0.4em;background:#ffc940;color:#333" onclick="toggleCardRow('${row.student_id}')">#設定/?裏設定</button>
       ${deleteMode ? `<button class="btn btn-del show" onclick="delStudent('${row.student_id}')">刪除</button>` : ""}
     </td>`;
     trs += "</tr>";
 
-    // 學生證展開
+    // 設定/裏設定展開區
     if (openCardRow && openCardRow === row.student_id) {
-      trs += `<tr class="expand-row open-card-row"><td colspan="5"><div class="student-card-box">${expandRow.html}</div></td></tr>`;
+      trs += `<tr class="expand-row open-card-row"><td colspan="5">
+        <div class="student-card-box">${expandRow.html}</div>
+      </td></tr>`;
     }
   });
   document.getElementById('role-tbody').innerHTML = trs;
   renderPagination("students");
 }
 
-// ====== 學生證展開 (含設定/裏設定分區, is_public格式) ======
+// ========== 設定/裏設定 展開 ==========
+
 async function toggleCardRow(student_id) {
   if (openCardRow === student_id) {
     openCardRow = null; expandRow = null; renderTable(); return;
   }
+  // 取得學生證資料
   let { data: stu } = await client.from("students").select("*").eq("student_id", student_id).single();
   if (!stu) { setMsg("查無學生資料", true); return; }
   let { data: notes } = await client.from("student_notes").select("content,is_public,type").eq("student_id", student_id);
@@ -401,21 +520,16 @@ async function toggleCardRow(student_id) {
 
   let html = `
     <ul>
-      <li><b>名字：</b>${stu.name}</li>
-      <li><b>性別：</b>${getGender(stu.gender)}</li>
-      <li><b>陣營：</b>${getAlignment(stu.alignment)}</li>
-      <li><b>年齡：</b>${stu.age||""}</li>
-      <li><b>身高：</b>${stu.height||""}</li>
-      <li><b>體重：</b>${stu.weight||""}</li>
-      <li><b>種族：</b>${stu.race||""}</li>
-      <li><b>角色類型：</b>${stu.student_type||""}</li>
       <li>
-        <b>設定：</b>
+        <b># 設定</b>
         <ul>${renderNotes(settingNotes)}</ul>
       </li>
       <li>
-        <b>裏設定：</b>
+        <b>? 裏設定</b>
         <ul>${renderNotes(secretNotes)}</ul>
+      </li>
+      <li style="margin-top:1em;">
+        <button class="btn btn-edit" onclick="alert('未實作：你可以在這放自定義更新邏輯')">【更新】</button>
       </li>
     </ul>
   `;
@@ -427,27 +541,20 @@ function escapeHTML(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-// ====== 狀態顏色樣式 ======
-function getReviewStatus(s) {
-  if (s === "WAIT") return `<span style="color:#33a853;font-weight:700">審核中</span>`; // 綠
-  if (s === "PASS") return `<span style="color:#1767a0;font-weight:700">已通過</span>`;
-  if (s === "BAD") return `<span style="color:#f66464;font-weight:700">未通過</span>`; // 紅
-  if (s === "ERROR") return `<span style="color:#f66464;font-weight:700">錯誤</span>`; // 紅
-  return "未審核";
+// ========== 分頁按鈕 ==========
+function renderPagination(tab) {
+  const data = filteredData;
+  const tbodyId = (tab==="players") ? "players-pagination" : "students-pagination";
+  const pageCount = Math.ceil(data.length / PAGE_SIZE) || 1;
+  let html = '';
+  for (let i = 1; i <= pageCount; i++) {
+    html += `<button ${i === currentPage ? 'class="active"' : ''} onclick="gotoPage(${i})">${i}</button>`;
+  }
+  document.getElementById(tbodyId).innerHTML = html;
 }
-function getGender(g) {
-  if (g === "M") return "男";
-  if (g === "F") return "女";
-  if (g === "O") return "其他";
-  return "-";
-}
-function getAlignment(a) {
-  if (a === "white") return "白";
-  if (a === "black") return "黑";
-  return a || "-";
-}
+function gotoPage(p) { currentPage = p; renderTable(); }
 
-// ====== 刪除模式與角色刪除 ======
+// ========== 刪除模式 ==========
 function toggleDeleteMode() {
   deleteMode = !deleteMode;
   const btn = document.getElementById('delete-toggle-btn');
@@ -460,33 +567,75 @@ function toggleDeleteMode() {
   }
   renderTable();
 }
+
+// ========== 玩家&角色 刪除（完整刪除功能）==========
+
 async function deepDeleteStudent(student_id) {
-  // 查技能
-  const { data: skills } = await client.from("student_skills").select("id, custom_skill_uuid, passive_trigger_id").eq("student_id", student_id);
+  // 1. 查出所有舊技能（含 id, custom_skill_uuid, passive_trigger_id）
+  const { data: skills } = await client
+    .from("student_skills")
+    .select("id, custom_skill_uuid, passive_trigger_id")
+    .eq("student_id", student_id);
+
   const skillIds = (skills || []).map(s => s.id);
   const customEffectIds = (skills || []).map(s => s.custom_skill_uuid).filter(Boolean);
   const passiveTriggerIds = (skills || []).map(s => s.passive_trigger_id).filter(Boolean);
+
+  // 2. 刪技能連結表（先砍所有 FK 依賴）
   if (skillIds.length) {
     await client.from("student_skill_effect_links").delete().in("skill_id", skillIds);
     await client.from("student_skill_debuff_links").delete().in("skill_id", skillIds);
+  }
+  // 3. 砍掉所有技能本體
+  if (skillIds.length) {
     await client.from("student_skills").delete().in("id", skillIds);
   }
+
+  // 4. 再砍這角色用到的 skill_effects、passive_trigger
   if (customEffectIds.length) {
     await client.from("skill_effects").delete().in("effect_id", customEffectIds);
   }
   if (passiveTriggerIds.length) {
     await client.from("passive_trigger").delete().in("trigger_id", passiveTriggerIds);
   }
-  const { data: images } = await client.from("student_images").select("image_url").eq("student_id", student_id);
+
+  // 5. 刪除 Storage 的圖片本體（這段是新加的！）
+  const { data: images } = await client
+    .from("student_images")
+    .select("image_url")
+    .eq("student_id", student_id);
+
   if (images && images.length > 0) {
     const filesToDelete = images.map(img => img.image_url);
-    if (filesToDelete.length > 0) await client.storage.from('student-img').remove(filesToDelete);
+    if (filesToDelete.length > 0) {
+      await client.storage.from('student-img').remove(filesToDelete);
+    }
   }
+
+  // 6. 刪除表內其他資料
   await client.from("student_reviews").delete().eq("student_id", student_id);
   await client.from("student_notes").delete().eq("student_id", student_id);
   await client.from("student_images").delete().eq("student_id", student_id);
+
+  // 7. 刪學生本體
   await client.from("students").delete().eq("student_id", student_id);
+
   console.log("角色完全刪除乾淨", student_id);
+}
+
+async function delPlayer(username) {
+  if (!deleteMode) return;
+  if (!confirm('確定要刪除這個玩家（及其所有角色）？')) return;
+  let { data: player } = await client.from("players").select("player_id").eq("username", username).single();
+  if (!player) return setMsg("查無此玩家",true);
+  let { data: students } = await client.from("students").select("student_id").eq("player_id", player.player_id);
+  for (let stu of (students || [])) {
+    await deepDeleteStudent(stu.student_id);
+  }
+  let { error } = await client.from("players").delete().eq("player_id", player.player_id);
+  if (error) setMsg("刪除失敗: " + error.message,true);
+  else setMsg("已刪除玩家及其角色");
+  await loadData();
 }
 async function delStudent(student_id) {
   if (!deleteMode) return;
@@ -501,7 +650,7 @@ async function delStudent(student_id) {
   await loadData();
 }
 
-// ====== 學生證（新分頁打開） ======
+// ========== 學生證（新分頁打開） ==========
 async function openStudentCard(student_id) {
   let { data } = await client.from("students").select("student_code").eq("student_id", student_id).single();
   if(data && data.student_code){
@@ -511,7 +660,7 @@ async function openStudentCard(student_id) {
   }
 }
 
-// ====== 審核彈窗&狀態存儲 ======
+// ========== 角色管理：審核彈窗 ==========
 let reviewStudentId = null, reviewStatusValue = null;
 const reviewStatusEnum = [
   {key: "", label: "未審核"}, 
@@ -519,10 +668,12 @@ const reviewStatusEnum = [
   {key: "WAIT", label: "審核中"},
   {key: "BAD", label: "未通過"}
 ];
+
 async function openReviewModal(student_id) {
   reviewStudentId = student_id;
   let { data } = await client.from("student_reviews").select("status").eq("student_id", student_id).single();
   reviewStatusValue = (data && data.status) || "WAIT";
+  // 取得學生原本學號
   let { data: stu } = await client.from("students").select("student_code").eq("student_id", student_id).single();
   renderReviewRadio();
   document.getElementById('review-modal-bg').style.display = 'flex';
@@ -530,6 +681,7 @@ async function openReviewModal(student_id) {
     document.getElementById('student-code-input').value = stu.student_code;
   }
 }
+
 function renderReviewRadio() {
   let html = reviewStatusEnum.map(st =>
     `<div class="radio-row">
@@ -553,6 +705,7 @@ function renderReviewRadio() {
   `;
   document.getElementById('review-status-list').innerHTML = html;
 }
+
 function closeReviewModal() {
   document.getElementById('review-modal-bg').style.display = 'none';
   reviewStudentId = null;
@@ -561,17 +714,56 @@ function setReviewStatus(val) {
   reviewStatusValue = val;
 }
 
-// ====== 儲存審核狀態 (含 reviewer_id, 學號NULL, 審核中 reviewer_id) ======
+// ========== 狀態格式化 ==========
+function getGender(g) {
+  if (g === "M") return "男";
+  if (g === "F") return "女";
+  if (g === "O") return "其他";
+  return "-";
+}
+function getAlignment(a) {
+  if (a === "white") return "白";
+  if (a === "black") return "黑";
+  return a || "-";
+}
+function getReviewStatus(s) {
+  if (s === "WAIT") return `<span style="color:#33a853;font-weight:700">審核中</span>`;      // 綠色
+  if (s === "PASS") return `<span style="color:#1767a0;font-weight:700">已通過</span>`;
+  if (s === "BAD") return `<span style="color:#f66464;font-weight:700">未通過</span>`;      // 紅色
+  if (s === "ERROR") return `<span style="color:#f66464;font-weight:700">錯誤</span>`;      // 紅色
+  return "未審核";
+}
+
+// ========== 訊息 ==========
+function setMsg(msg, err) {
+  document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
+}
+
+// ========== 載入 ==========
+document.addEventListener('DOMContentLoaded', function () {
+  renderTabs();
+  renderSearchField();
+  document.getElementById('players-table-wrap').style.display = '';
+  loadData();
+  document.getElementById('search').oninput = searchTable;
+  document.getElementById('delete-toggle-btn').onclick = toggleDeleteMode;
+  // modal 關閉
+  document.querySelector('.modal-bg .close-btn').onclick = closeReviewModal;
+});
+
+// ========== 審核狀態儲存（reviewer_id、學號 NULL、審核細節）==========
 async function saveReviewStatus() {
   const codeInput = document.getElementById('student-code-input');
   const codeMsg = document.getElementById('student-code-msg');
   const student_code = (codeInput.value || '').trim();
-  // PASS 狀態要檢查學號唯一
+
+  // 狀態 PASS 才檢查學號唯一
   if(reviewStatusValue === "PASS") {
     if(!student_code) {
       codeMsg.textContent = "請輸入學號";
       return;
     }
+    // 唯一性
     let { data, error } = await client.from("students").select("student_id").eq("student_code", student_code).neq("student_id", reviewStudentId).single();
     if(data) {
       codeMsg.textContent = "學號重複，請換一個";
@@ -583,23 +775,28 @@ async function saveReviewStatus() {
   if (reviewStatusValue === "" || reviewStatusValue === null) {
     await client.from("students").update({student_code: null}).eq("student_id", reviewStudentId);
   }
+
   // 取得 reviewer_id（當前登入管理員 player_id）
   let { data: { user } } = await client.auth.getUser();
   if (!user) { alert('請先登入'); return; }
   let { data: adminData } = await client.from('players').select('player_id').eq('email', user.email).single();
   let reviewer_id = adminData ? adminData.player_id : null;
 
-  // 狀態
+  // 更新審核狀態
   let { data } = await client.from("student_reviews").select("student_id").eq("student_id", reviewStudentId).single();
   let statusValue = reviewStatusValue || null;
-  const updateData = { status: statusValue };
 
-  // **審核中或通過才寫 reviewer_id**
+  const updateData = {
+    status: statusValue
+  };
+
+  // 狀態是「審核中」或「通過」都記錄 reviewer_id，其它清空 reviewer_id
   if (statusValue === "WAIT" || statusValue === "PASS") {
     updateData.reviewer_id = reviewer_id;
   } else {
-    updateData.reviewer_id = null; 
+    updateData.reviewer_id = null;
   }
+
   if (data) {
     await client.from("student_reviews").update(updateData).eq("student_id", reviewStudentId);
   } else {
@@ -608,33 +805,19 @@ async function saveReviewStatus() {
       ...updateData
     });
   }
+
   closeReviewModal();
   loadData();
 }
 
-// ====== 訊息 ======
-function setMsg(msg, err) {
-  document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
-}
-
-// ====== 載入 ======
-document.addEventListener('DOMContentLoaded', function () {
-  renderTabs();
-  renderSearchField();
-  document.getElementById('players-table-wrap').style.display = "none";
-  document.getElementById('students-table-wrap').style.display = "";
-  loadData();
-  document.getElementById('search').oninput = searchTable;
-  document.getElementById('delete-toggle-btn').onclick = toggleDeleteMode;
-  document.querySelector('.modal-bg .close-btn').onclick = closeReviewModal;
-});
-
-// ====== 必須全局綁定 ======
+// ========== for window scope ==========
 window.gotoPage = gotoPage;
+window.expandChars = expandChars;
 window.toggleCardRow = toggleCardRow;
 window.openReviewModal = openReviewModal;
 window.closeReviewModal = closeReviewModal;
 window.setReviewStatus = setReviewStatus;
+window.delPlayer = delPlayer;
 window.delStudent = delStudent;
 window.openStudentCard = openStudentCard;
 window.searchTable = searchTable;

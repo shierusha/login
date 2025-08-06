@@ -215,364 +215,431 @@ window.client = window.supabase.createClient(
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
 );
 //角色卡ID
+// ====== 白名單與特殊玩家設定 ======
 const TEST_STUDENT_IDS = [
   '434cbc99-9a4f-4334-bc71-7236b8daf51c', // 777
   '6ceb01f3-d296-438f-be5a-eebfa6e30e41', // 夢荔枝
   '845dd04d-ff39-43a8-ad84-e8f714a8b454', //工具寵
   'fe4e4c3e-66ae-4ded-afe6-417f73979131', //梨
   '7712a95b-7884-4e34-8dba-65ff01084b16', //咕咕
-  'ee8ea0cd-d664-4b5f-8d0e-0240bf9debdb'//現荔枝
+  'ee8ea0cd-d664-4b5f-8d0e-0240bf9debdb' //現荔枝
 ];
-const SPECIAL_PLAYER_ID = '8aea3076-294c-41f6-bb38-0a99da77c098'; //其實是AI
+const SPECIAL_PLAYER_ID = '8aea3076-294c-41f6-bb38-0a99da77c098';
 
-const OCCUPATION_MAP = { attack: "攻擊手", healer: "補師", tank: "坦克", buffer: "增益手", jammer: "妨礙手" };
-const GENDER_MAP = { M: "男", F: "女", O: "其他" };
-const ALIGNMENT_MAP = { white: "白", black: "黑" };
-const ELEMENT_MAP = { fire: "火", water: "水", ice: "冰", wind: "風", earth: "土", thunder: "雷", dark: "暗", light: "光" };
-const RANGE_MAP = { same_zone: "近距離", cross_zone: "遠距離", all_zone: "遠近皆可" };
-const ROLE_MAP = { melee: "近戰攻擊手", ranger: "遠攻攻擊手", balance: "普通攻擊手" };
-const POSITION_MAP = { close: "近戰區", far: "遠攻區" };
+// ====== 其餘常數 ======
+const PAGE_SIZE = 10;
+let currentTab = "students";
+let rawData = [], filteredData = [], currentPage = 1, expandRow = null, openCardRow = null;
+let deleteMode = false;
 
-function mapEnum(val, mapObj) {
-  if (!val) return "";
-  if (Array.isArray(val)) return val.map(v => mapObj[v] || v).join(" / ");
-  return mapObj[val] || val;
-}
-
-function getStuParam() {
-  const url = new URL(location.href);
-  return url.searchParams.get("stu") || "";
-}
-
-function isUuid(v) {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
-}
-
-
-function bustCache(url) {
-  if (!url) return '';
-  return url + (url.includes('?') ? '&v=' : '?v=') + Date.now();
-}
-// 查目前登入帳號在players表的role（判斷是不是admin）
-async function getIsAdmin(client) {
-  const { data: { user } } = await client.auth.getUser();
-  const currentPlayerId = user?.id || "";
-  if (!currentPlayerId) return false;
-  let { data: player } = await client
-    .from('players')
-    .select('role')
-    .eq('player_id', currentPlayerId)
-    .maybeSingle();
-  return player && player.role === 'admin';
-}
-
-// 查學生卡（權限全部寫死）
-
-
-async function fetchStudentData(client, stuParam, isAdmin) {
-if (isUuid(stuParam)) {
-  let { data, error } = await client
-    .from('students')
-    .select('*, student_images(*), student_notes(*), player_id, element_weakness:weakness_id(element)')
-    .eq('student_id', stuParam)
-    .maybeSingle();
-  if (error || !data) return null;
-
-  // 只要這張卡是特殊玩家的，任何人都能查
-  if (data.player_id === SPECIAL_PLAYER_ID) return data;
-
-  // 其他卡走權限
-  if (
-    TEST_STUDENT_IDS.includes(data.student_id) || // 白名單
-    isAdmin                                       // 管理員
-  ) return data;
-
-  return null;
-}
-
-  
-  // 用 student_code 查，任何人都可
-  let { data, error } = await client
-    .from('students')
-    .select('*, student_images(*), student_notes(*), element_weakness:weakness_id(element)')
-    .eq('student_code', stuParam)
-    .maybeSingle();
-  if (error || !data) return null;
-  return data;
-}
-
-// 查技能（這裡加入 movement_skill 資訊）
-async function fetchSkills(client, student_id) {
-  let { data: skills, error } = await client
-    .from('student_skills')
-    .select(`
-      *,
-      passive_trigger:passive_trigger_id(condition),
-      movement_skill:linked_movement_id(move_name),
-      student_skill_effect_links(effect_id, skill_id, effect:effect_id(effect_name,description)),
-      student_skill_debuff_links(debuff_id, skill_id, applied_to, debuff:debuff_id(debuff_name))
-    `)
-    .eq('student_id', student_id)
-    .order('skill_slot', { ascending: true });
-  if (error || !skills) return [];
-  return skills.map(s => ({
-    ...s,
-    effects: (s.student_skill_effect_links || []).map(e => e.effect?.effect_name).filter(Boolean),
-    debuffs: (s.student_skill_debuff_links || []).map(d => ({
-      applied_to: d.applied_to === "self" ? "自身" : "目標",
-      name: d.debuff?.debuff_name
-    })).filter(d => d.name),
-    custom_skill_effect: s.custom_skill_uuid && s.custom_skill_uuid.description,
-    trigger_condition: s.passive_trigger && s.passive_trigger.condition,
-    movement_effect_name: s.movement_skill?.move_name   // 新增
-  }));
-}
-
-// 填入資料
-function fillStudentCard(student, skills) {
-  const frontImg = (student.student_images || []).find(i => i.image_type === "front");
-  const backImg = (student.student_images || []).find(i => i.image_type === "back") || frontImg;
-
-    // 加 cache-busting
-  document.querySelectorAll('[data-key="student_images.front_url"]').forEach(el => {
-    if (frontImg) el.src = bustCache(frontImg.image_url);
-  });
-  document.querySelectorAll('[data-key="student_images.back_url"]').forEach(el => {
-    if (backImg) el.src = bustCache(backImg.image_url);
-  });
-
-  document.querySelectorAll('[data-key="students.student_code"]').forEach(el => el.innerText = student.student_code);
-  document.querySelectorAll('[data-key="students.name"]').forEach(el => el.innerText = student.name);
-document.querySelectorAll('[data-key="students.nickname"]').forEach(el => {
-  if (!student.nickname) {
-    el.parentElement.style.display = 'none';
-    el.innerText = "";
-  } else {
-    el.parentElement.style.display = '';   // ← 若要回復顯示
-    el.innerText = student.nickname;
+const TABLES = {
+  students: {
+    label: "角色管理",
+    fields: [
+      { key: "name", name: "名字" },
+      { key: "gender", name: "性別" },
+      { key: "alignment", name: "陣營" },
+      { key: "review_status", name: "狀態" }
+    ],
+    search: [
+      { key: "name", name: "名字" },
+      { key: "gender", name: "性別" },
+      { key: "alignment", name: "陣營" },
+      { key: "review_status", name: "狀態" }
+    ]
   }
-});
-  document.querySelectorAll('[data-key="students.alignment"]').forEach(el => el.innerText = mapEnum(student.alignment, ALIGNMENT_MAP));
-  document.querySelectorAll('[data-key="students.race"]').forEach(el => el.innerText = student.race || "");
-  document.querySelectorAll('[data-key="students.age"]').forEach(el => el.innerText = (student.age && student.age > 0) ? student.age : "？");
-  document.querySelectorAll('[data-key="students.gender"]').forEach(el => el.innerText = mapEnum(student.gender, GENDER_MAP));
-  document.querySelectorAll('[data-key="students.height"]').forEach(el => el.innerText = student.height || "");
-  document.querySelectorAll('[data-key="students.weight"]').forEach(el => el.innerText = student.weight || "");
-  document.querySelectorAll('[data-key="students.likes"]').forEach(el => el.innerText = student.likes || "");
-  document.querySelectorAll('[data-key="students.hate"]').forEach(el => el.innerText = student.hate || "");
-  document.querySelectorAll('[data-key="students.background"]').forEach(el => el.innerText = student.background || "");
-  document.querySelectorAll('[data-key="students.occupation_type"]').forEach(el => el.innerText = mapEnum(student.occupation_type, OCCUPATION_MAP));
-document.querySelectorAll('[data-key="students.element"]').forEach(el => { el.innerText = student.element ? mapEnum(student.element, ELEMENT_MAP) : "無";});
-  document.querySelectorAll('[data-key="element_weakness.element"]').forEach(el => {
-    el.innerText = student.element_weakness && student.element_weakness.element ? mapEnum(student.element_weakness.element, ELEMENT_MAP) : "無"; });
-  document.querySelectorAll('[data-key="students.preferred_role"]').forEach(el => el.innerText = mapEnum(student.preferred_role, ROLE_MAP));
-  document.querySelectorAll('[data-key="students.starting_position"]').forEach(el => { el.innerText = student.starting_position ? mapEnum(student.starting_position, POSITION_MAP) : "無";});
-  document.querySelectorAll('[data-key="students.personality"]').forEach(el => el.innerText = student.personality || ""); // 新增這行
+};
 
-  document.querySelectorAll('[data-key="student_notes.content"]').forEach(el => {
-    if (!student.student_notes || student.student_notes.length === 0) {
-      el.innerText = "";
+// ====== 分頁/搜尋等 ======
+function renderTabs() {
+  let html = `<div class="tab active" data-tab="students">${TABLES.students.label}</div>`;
+  document.getElementById('tabs').innerHTML = html;
+  document.getElementById('players-table-wrap').style.display = "none";
+  document.getElementById('students-table-wrap').style.display = "";
+}
+function renderSearchField() {
+  const searchFields = TABLES.students.search;
+  let html = '';
+  searchFields.forEach(sf=>{
+    html += `<option value="${sf.key}">${sf.name}</option>`;
+  });
+  document.getElementById('search-field').innerHTML = html;
+}
+function searchTable() {
+  const field = document.getElementById('search-field').value;
+  const kw = document.getElementById('search').value.trim().toLowerCase();
+  if (!kw) { filteredData = rawData; currentPage = 1; renderTable(); return; }
+  filteredData = rawData.filter(row => {
+    if (row.__isPlayer) return true;
+    return String(row[field]??"").toLowerCase().includes(kw);
+  });
+  currentPage = 1;
+  renderTable();
+}
+function renderTable() {
+  renderStudentsTable();
+}
+function renderPagination(tab) {
+  const data = filteredData;
+  const tbodyId = "students-pagination";
+  const pageCount = Math.ceil(data.length / PAGE_SIZE) || 1;
+  let html = '';
+  for (let i = 1; i <= pageCount; i++) {
+    html += `<button ${i === currentPage ? 'class="active"' : ''} onclick="gotoPage(${i})">${i}</button>`;
+  }
+  document.getElementById(tbodyId).innerHTML = html;
+}
+function gotoPage(p) { currentPage = p; renderTable(); }
+
+// ====== 資料載入、排序、分群 ======
+async function loadData() {
+  setMsg("資料載入中...");
+  expandRow = null; openCardRow = null;
+
+  // 拉所有學生（含 player_id）、玩家名
+  let { data: students, error } = await client
+    .from("students")
+    .select("student_id,name,gender,alignment,player_id")
+    .order("player_id", { ascending: true })
+    .order("name", { ascending: true });
+  if (error) return setMsg("角色讀取失敗：" + error.message, true);
+
+  // 取得玩家名
+  let { data: players } = await client.from("players").select("player_id,username");
+  let playerMap = {};
+  (players||[]).forEach(p=>playerMap[p.player_id]=p.username);
+
+  // 白名單與特殊玩家過濾
+  students = (students||[]).filter(
+    s => !TEST_STUDENT_IDS.includes(s.student_id) && s.player_id !== SPECIAL_PLAYER_ID
+  );
+
+  // 取得 review 狀態
+  let { data: reviews } = await client.from("student_reviews").select("student_id,status");
+  let reviewMap = {};
+  (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
+
+  // 分群組
+  let grouped = {};
+  students.forEach(s=>{
+    const uname = playerMap[s.player_id] || "未知玩家";
+    if(!grouped[uname]) grouped[uname] = [];
+    grouped[uname].push({
+      ...s,
+      review_status: reviewMap[s.student_id] || "未審核"
+    });
+  });
+
+  // 組成 rawData (分群)
+  rawData = [];
+  Object.keys(grouped).sort().forEach(uname=>{
+    rawData.push({__isPlayer: true, username: uname});
+    grouped[uname].forEach(stu=>rawData.push(stu));
+  });
+
+  filteredData = rawData;
+  renderTable();
+  setMsg("");
+}
+
+// ====== 角色管理分群顯示 ======
+function renderStudentsTable() {
+  let trs = "";
+  const start = (currentPage-1)*PAGE_SIZE, end = start+PAGE_SIZE;
+  let slice = filteredData.slice(start, end);
+
+  slice.forEach((row, i) => {
+    if(row.__isPlayer) {
+      trs += `<tr style="background:#f4f7fa;">
+        <td colspan="5" style="font-weight:bold;font-size:1.1em;color:#3d648d;">
+          ${row.username}
+        </td></tr>`;
       return;
     }
-    el.innerText = student.student_notes
-      .sort((a, b) => a.sort_order - b.sort_order)
-      .map(n => n.is_public ? `# ${n.content}` : "# ???")
-      .join('\n');
-  });
+    // 角色顯示
+    trs += "<tr>";
+    trs += `<td>${row.name||''}</td>`;
+    trs += `<td>${getGender(row.gender)}</td>`;
+    trs += `<td>${getAlignment(row.alignment)}</td>`;
+    trs += `<td>${getReviewStatus(row.review_status)}</td>`;
+    trs += `<td>
+      <button class="btn btn-link" onclick="openStudentCard('${row.student_id}')">學生證</button>
+      <button class="btn btn-edit" onclick="openReviewModal('${row.student_id}')">審核</button>
+      ${deleteMode ? `<button class="btn btn-del show" onclick="delStudent('${row.student_id}')">刪除</button>` : ""}
+    </td>`;
+    trs += "</tr>";
 
-  for (let i = 0; i < 2; i++) {
-    const skill = skills[i] || {};
-    document.querySelectorAll(`[data-key="student_skills.${i + 1}.skill_name"]`).forEach(el => el.innerText = skill.skill_name || "");
-    document.querySelectorAll(`[data-key="student_skills.${i + 1}.final_cd"]`).forEach(el => el.innerText = skill.is_passive ? "X" : (skill.final_cd ?? 0));
-    document.querySelectorAll(`[data-key="student_skills.${i + 1}.max_targets"]`).forEach(el => {
-      let val = skill.max_targets;
-      if (val === 1) el.innerText = "單體";
-      else if (val > 1) el.innerText = `範圍(${val})`;
-      else el.innerText = "";
-    });
-    document.querySelectorAll(`[data-key="student_skills.${i + 1}.range"]`).forEach(el => el.innerText = mapEnum(skill.range, RANGE_MAP));
-    document.querySelectorAll(`[data-key="student_skills.${i + 1}.description"]`).forEach(el => {
-      if (skill.is_passive && skill.trigger_condition) {
-        el.innerText = `${skill.description || ""}\n\n條件：${skill.trigger_condition}`;
-      } else {
-        el.innerText = skill.description || "";
-      }
-    });
-    document.querySelectorAll(`[data-key="student_skills.${i + 1}.effectsAndDebuffs"]`).forEach(el => {
-      let html = "";
-      if (skill.custom_skill_effect) html += `${skill.custom_skill_effect}\n\n`;
-      if (skill.effects && skill.effects.length > 0) skill.effects.forEach(e => html += `# ${e}\n`);
-      if (skill.movement_effect_name) html += `# ${skill.movement_effect_name}\n`;
-      if (skill.debuffs && skill.debuffs.length > 0) skill.debuffs.forEach(d => html += `# ${d.applied_to}${d.name}\n`);
-      el.innerText = html;
-    });
-  }
-
-  const extraSkills = skills.slice(2);
-  document.querySelectorAll('[data-key="student_skills.extra_skills"]').forEach(el => {
-    if (extraSkills.length === 0) {
-      el.style.display = "none";
-      el.onclick = null;
-    } else {
-      el.style.display = "";
-      el.onclick = () => {
-        let html = "";
-        extraSkills.forEach(skill => {
-          html += `${skill.skill_name || ""}\n${skill.description || ""}\n\n`;
-        });
-        if (typeof showInfoModal === "function")
-          showInfoModal("額外技能", html.replace(/\n/g, "<br>"));
-      };
+    // 學生證展開
+    if (openCardRow && openCardRow === row.student_id) {
+      trs += `<tr class="expand-row open-card-row"><td colspan="5"><div class="student-card-box">${expandRow.html}</div></td></tr>`;
     }
   });
-
-  // ★★★ 這裡是修正重點：填完資料後才執行這兩個 function
-  if (typeof fitAll === "function") fitAll();
-  if (typeof checkLongTextByCharCount === "function") checkLongTextByCharCount(11);
+  document.getElementById('role-tbody').innerHTML = trs;
+  renderPagination("students");
 }
 
-// 自動流程
-window.addEventListener('DOMContentLoaded', async () => {
-  const stuParam = getStuParam();
-  if (!stuParam || !window.client) return;
+// ====== 學生證展開 (含設定/裏設定分區, is_public格式) ======
+async function toggleCardRow(student_id) {
+  if (openCardRow === student_id) {
+    openCardRow = null; expandRow = null; renderTable(); return;
+  }
+  let { data: stu } = await client.from("students").select("*").eq("student_id", student_id).single();
+  if (!stu) { setMsg("查無學生資料", true); return; }
+  let { data: notes } = await client.from("student_notes").select("content,is_public,type").eq("student_id", student_id);
 
-  const isAdmin = await getIsAdmin(window.client);
+  // type: "setting" = 設定，"secret" = 裏設定
+  let settingNotes = (notes||[]).filter(n=>n.type === "setting");
+  let secretNotes = (notes||[]).filter(n=>n.type === "secret");
 
-  const student = await fetchStudentData(window.client, stuParam, isAdmin);
-
-  if (!student) {
-    alert("? 你想找誰?");
-    return;
+  function renderNotes(arr) {
+    return (arr.length ? arr.map(n =>
+      `<li style="white-space:pre-line;">
+        ${n.is_public ? '# ' : '? '}${escapeHTML(n.content)}
+      </li>`
+    ).join('') : '<li>（無）</li>');
   }
 
-  const skills = await fetchSkills(window.client, student.student_id);
-
-  fillStudentCard(student, skills);
-});
-
-
-//-----------------------------------------------------------
-
-function setNameFontSize(selector, maxChars) {
-  document.querySelectorAll(selector).forEach(box => {
-    const nameDiv = box.querySelector('.name-box');
-    if (!nameDiv) return;
-    const fontSize = box.offsetHeight / maxChars * 0.98;
-    nameDiv.style.fontSize = fontSize + "px";
-  });
+  let html = `
+    <ul>
+      <li><b>名字：</b>${stu.name}</li>
+      <li><b>性別：</b>${getGender(stu.gender)}</li>
+      <li><b>陣營：</b>${getAlignment(stu.alignment)}</li>
+      <li><b>年齡：</b>${stu.age||""}</li>
+      <li><b>身高：</b>${stu.height||""}</li>
+      <li><b>體重：</b>${stu.weight||""}</li>
+      <li><b>種族：</b>${stu.race||""}</li>
+      <li><b>角色類型：</b>${stu.student_type||""}</li>
+      <li>
+        <b>設定：</b>
+        <ul>${renderNotes(settingNotes)}</ul>
+      </li>
+      <li>
+        <b>裏設定：</b>
+        <ul>${renderNotes(secretNotes)}</ul>
+      </li>
+    </ul>
+  `;
+  openCardRow = student_id;
+  expandRow = { id: student_id, html };
+  renderTable();
+}
+function escapeHTML(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 }
 
-function fitAllNameBoxes() {
-  setNameFontSize('.bigname-box', 12);
-  setNameFontSize('.littlename-box', 9);
+// ====== 狀態顏色樣式 ======
+function getReviewStatus(s) {
+  if (s === "WAIT") return `<span style="color:#33a853;font-weight:700">審核中</span>`; // 綠
+  if (s === "PASS") return `<span style="color:#1767a0;font-weight:700">已通過</span>`;
+  if (s === "BAD") return `<span style="color:#f66464;font-weight:700">未通過</span>`; // 紅
+  if (s === "ERROR") return `<span style="color:#f66464;font-weight:700">錯誤</span>`; // 紅
+  return "未審核";
+}
+function getGender(g) {
+  if (g === "M") return "男";
+  if (g === "F") return "女";
+  if (g === "O") return "其他";
+  return "-";
+}
+function getAlignment(a) {
+  if (a === "white") return "白";
+  if (a === "black") return "黑";
+  return a || "-";
 }
 
-function setInfoBoxFontSize() {
-  const infoBoxes = document.querySelectorAll('.info-box');
-  if (!infoBoxes.length) return;
-  let minHeight = Infinity;
-  infoBoxes.forEach(box => {
-    const h = box.offsetHeight;
-    if (h < minHeight) minHeight = h;
-  });
-  const fontSize = minHeight * 0.62;
-  infoBoxes.forEach(box => {
-    box.style.fontSize = fontSize + "px";
-  });
+// ====== 刪除模式與角色刪除 ======
+function toggleDeleteMode() {
+  deleteMode = !deleteMode;
+  const btn = document.getElementById('delete-toggle-btn');
+  if (deleteMode) {
+    btn.classList.add('active');
+    btn.textContent = '停用刪除';
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '啟用刪除';
+  }
+  renderTable();
+}
+async function deepDeleteStudent(student_id) {
+  // 查技能
+  const { data: skills } = await client.from("student_skills").select("id, custom_skill_uuid, passive_trigger_id").eq("student_id", student_id);
+  const skillIds = (skills || []).map(s => s.id);
+  const customEffectIds = (skills || []).map(s => s.custom_skill_uuid).filter(Boolean);
+  const passiveTriggerIds = (skills || []).map(s => s.passive_trigger_id).filter(Boolean);
+  if (skillIds.length) {
+    await client.from("student_skill_effect_links").delete().in("skill_id", skillIds);
+    await client.from("student_skill_debuff_links").delete().in("skill_id", skillIds);
+    await client.from("student_skills").delete().in("id", skillIds);
+  }
+  if (customEffectIds.length) {
+    await client.from("skill_effects").delete().in("effect_id", customEffectIds);
+  }
+  if (passiveTriggerIds.length) {
+    await client.from("passive_trigger").delete().in("trigger_id", passiveTriggerIds);
+  }
+  const { data: images } = await client.from("student_images").select("image_url").eq("student_id", student_id);
+  if (images && images.length > 0) {
+    const filesToDelete = images.map(img => img.image_url);
+    if (filesToDelete.length > 0) await client.storage.from('student-img').remove(filesToDelete);
+  }
+  await client.from("student_reviews").delete().eq("student_id", student_id);
+  await client.from("student_notes").delete().eq("student_id", student_id);
+  await client.from("student_images").delete().eq("student_id", student_id);
+  await client.from("students").delete().eq("student_id", student_id);
+  console.log("角色完全刪除乾淨", student_id);
+}
+async function delStudent(student_id) {
+  if (!deleteMode) return;
+  if (!confirm('確定要刪除這個角色？')) return;
+  setMsg('刪除中…');
+  try {
+    await deepDeleteStudent(student_id);
+    setMsg("已刪除角色");
+  } catch (e) {
+    setMsg("刪除失敗: " + (e.message || e), true);
+  }
+  await loadData();
 }
 
-function setFlipBtnFontSize() {
-  document.querySelectorAll('.row-flip-btn').forEach(box => {
-    const btn = box.querySelector('.flip-btn');
-    if (!btn) return;
-    // 用高度算，讓四字不會超出（0.55可微調）
-    const fontSize = Math.max(box.offsetHeight * 0.6);
-    btn.style.fontSize = fontSize + "px";
-  });
+// ====== 學生證（新分頁打開） ======
+async function openStudentCard(student_id) {
+  let { data } = await client.from("students").select("student_code").eq("student_id", student_id).single();
+  if(data && data.student_code){
+    window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?stu=${encodeURIComponent(data.student_code)}`, "_blank");
+  } else {
+    window.open(`https://shierusha.github.io/school-battle/students/st-idcard.html?stu=${student_id}`, "_blank");
+  }
 }
 
-function setStudentIdFontSize() {
-  document.querySelectorAll('.student-id').forEach(box => {
-    // 用外層高度計算，數字可依區塊比例微調
-    const fontSize = Math.max(box.offsetHeight * 0.7); // 12是最小字體
-    box.style.fontSize = fontSize + "px";
-  });
+// ====== 審核彈窗&狀態存儲 ======
+let reviewStudentId = null, reviewStatusValue = null;
+const reviewStatusEnum = [
+  {key: "", label: "未審核"}, 
+  {key: "PASS", label: "已通過"},
+  {key: "WAIT", label: "審核中"},
+  {key: "BAD", label: "未通過"}
+];
+async function openReviewModal(student_id) {
+  reviewStudentId = student_id;
+  let { data } = await client.from("student_reviews").select("status").eq("student_id", student_id).single();
+  reviewStatusValue = (data && data.status) || "WAIT";
+  let { data: stu } = await client.from("students").select("student_code").eq("student_id", student_id).single();
+  renderReviewRadio();
+  document.getElementById('review-modal-bg').style.display = 'flex';
+  if(stu && stu.student_code){
+    document.getElementById('student-code-input').value = stu.student_code;
+  }
+}
+function renderReviewRadio() {
+  let html = reviewStatusEnum.map(st =>
+    `<div class="radio-row">
+      <label>
+        <input type="radio" name="reviewStatus" value="${st.key}" ${st.key === reviewStatusValue ? 'checked' : ''} onchange="setReviewStatus('${st.key}')">
+        ${st.label}
+      </label>
+    </div>`
+  ).join('');
+  html += `
+    <div class="radio-row">
+      <label>
+        學號（01-99）：
+        <input type="text" id="student-code-input" style="margin-left:0.5em;" placeholder="請輸入學號">
+      </label>
+      <div id="student-code-msg" style="color:#d44;margin-top:0.3em;"></div>
+    </div>
+    <div style="margin-top:1em;">
+      <button class="btn btn-edit" onclick="saveReviewStatus()">儲存</button>
+    </div>
+  `;
+  document.getElementById('review-status-list').innerHTML = html;
+}
+function closeReviewModal() {
+  document.getElementById('review-modal-bg').style.display = 'none';
+  reviewStudentId = null;
+}
+function setReviewStatus(val) {
+  reviewStatusValue = val;
 }
 
-function fitAll() {
-  fitAllNameBoxes();
-  setInfoBoxFontSize();
-  setFlipBtnFontSize();
-  setStudentIdFontSize();
-}
-
-window.addEventListener('DOMContentLoaded', fitAll);
-window.addEventListener('resize', fitAll);
-window.addEventListener('load', fitAll);
-
-
-// 更多
-// 判斷 info-value 超過 11 字才顯示 ...MORE
-function checkLongTextByCharCount(N = 11) {
-  document.querySelectorAll('.info-box').forEach(box => {
-    const value = box.querySelector('.info-value');
-    const btn = box.querySelector('.show-more-btn');
-    if (!value || !btn) return;
-    if (value.innerText.trim().length > N) {
-      btn.style.display = 'block';
-      btn.onclick = function() {
-        // 標題優先抓 info-label, 沒有就用 data-title (button自訂)，最後才 "效果"
-        const label = this.dataset.title || box.querySelector('.info-label')?.innerText || "效果";
-        showInfoModal(label, value.innerHTML);
-      }
-    } else {
-      btn.style.display = 'none';
+// ====== 儲存審核狀態 (含 reviewer_id, 學號NULL, 審核中 reviewer_id) ======
+async function saveReviewStatus() {
+  const codeInput = document.getElementById('student-code-input');
+  const codeMsg = document.getElementById('student-code-msg');
+  const student_code = (codeInput.value || '').trim();
+  // PASS 狀態要檢查學號唯一
+  if(reviewStatusValue === "PASS") {
+    if(!student_code) {
+      codeMsg.textContent = "請輸入學號";
+      return;
     }
-  });
-}
-// 初次不要呼叫，resize 時才判斷
-window.addEventListener('resize', () => checkLongTextByCharCount(11));
-
-
-// 彈跳視窗相關
-function showInfoModal(title, content) {
-  document.getElementById('info-modal-title').innerText = title;
-  document.getElementById('info-modal-body').innerHTML = content;
-  document.getElementById('info-modal').style.display = 'flex';
-}
-// 點背景關閉彈窗
-document.getElementById('info-modal').addEventListener('click', function(e) {
-  if (e.target === this) {
-    e.stopPropagation();  // ★★★ 關鍵！阻止觸發 document click
-    this.style.display = 'none';
+    let { data, error } = await client.from("students").select("student_id").eq("student_code", student_code).neq("student_id", reviewStudentId).single();
+    if(data) {
+      codeMsg.textContent = "學號重複，請換一個";
+      return;
+    }
+    await client.from("students").update({student_code}).eq("student_id", reviewStudentId);
   }
-});
+  // **未審核直接清空學號**
+  if (reviewStatusValue === "" || reviewStatusValue === null) {
+    await client.from("students").update({student_code: null}).eq("student_id", reviewStudentId);
+  }
+  // 取得 reviewer_id（當前登入管理員 player_id）
+  let { data: { user } } = await client.auth.getUser();
+  if (!user) { alert('請先登入'); return; }
+  let { data: adminData } = await client.from('players').select('player_id').eq('email', user.email).single();
+  let reviewer_id = adminData ? adminData.player_id : null;
 
+  // 狀態
+  let { data } = await client.from("student_reviews").select("student_id").eq("student_id", reviewStudentId).single();
+  let statusValue = reviewStatusValue || null;
+  const updateData = { status: statusValue };
 
-window.addEventListener('DOMContentLoaded', () => {
-  const flipCard = document.getElementById('flipCard');
-
-  // 點翻面按鈕（阻止冒泡）
-  document.querySelectorAll('.flip-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      flipCard.classList.toggle('flipped');
+  // **審核中或通過才寫 reviewer_id**
+  if (statusValue === "WAIT" || statusValue === "PASS") {
+    updateData.reviewer_id = reviewer_id;
+  } else {
+    updateData.reviewer_id = null; 
+  }
+  if (data) {
+    await client.from("student_reviews").update(updateData).eq("student_id", reviewStudentId);
+  } else {
+    await client.from("student_reviews").insert({
+      student_id: reviewStudentId,
+      ...updateData
     });
-  });
+  }
+  closeReviewModal();
+  loadData();
+}
 
-  // 點畫面上非卡片、非彈窗時才翻面
-  document.addEventListener('click', (e) => {
-    // 判斷 info-modal 是否有顯示
-    const modal = document.getElementById('info-modal');
-    const isModalOpen = modal && getComputedStyle(modal).display !== 'none';
-    // 如果有彈窗開著就不做任何事
-    if (isModalOpen) return;
-    // 點到非卡片區才翻面
-    if (!e.target.closest('#flipCard')) {
-      flipCard.classList.toggle('flipped');
-    }
-  });
+// ====== 訊息 ======
+function setMsg(msg, err) {
+  document.getElementById('msg').innerHTML = msg ? `<span style="color:${err ? '#d44':'#1767a0'}">${msg}</span>` : '';
+}
+
+// ====== 載入 ======
+document.addEventListener('DOMContentLoaded', function () {
+  renderTabs();
+  renderSearchField();
+  document.getElementById('players-table-wrap').style.display = "none";
+  document.getElementById('students-table-wrap').style.display = "";
+  loadData();
+  document.getElementById('search').oninput = searchTable;
+  document.getElementById('delete-toggle-btn').onclick = toggleDeleteMode;
+  document.querySelector('.modal-bg .close-btn').onclick = closeReviewModal;
 });
+
+// ====== 必須全局綁定 ======
+window.gotoPage = gotoPage;
+window.toggleCardRow = toggleCardRow;
+window.openReviewModal = openReviewModal;
+window.closeReviewModal = closeReviewModal;
+window.setReviewStatus = setReviewStatus;
+window.delStudent = delStudent;
+window.openStudentCard = openStudentCard;
+window.searchTable = searchTable;
+window.saveReviewStatus = saveReviewStatus;
+
 </script>
 
 </body>

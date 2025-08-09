@@ -113,7 +113,7 @@ async function signUp() {
         // 把玩家名稱丟進 raw_user_meta_data，資料庫觸發器會拿來建 players
         data: { username },
         // 驗證後導回的頁面（你可以改成自己的確認頁）
-        emailRedirectTo: 'https://shierusha.github.io/login/confirm'
+        emailRedirectTo: 'https://shierusha.github.io/login/reset'
       }
     });
 

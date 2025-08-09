@@ -1,4 +1,3 @@
-
 // ====== Supabase 設定 ======
 const client = window.supabase.createClient(
   'https://wfhwhvodgikpducrhgda.supabase.co',
@@ -14,7 +13,7 @@ function transErrorMsg(msg) {
   if (msg.includes('User not found')) return '查無此帳號，請確認信箱是否輸入正確';
   if (msg.includes('Password should be at least')) return '密碼長度不足（至少 6 位）';
   if (msg.includes('Invalid email or password')) return '帳號或密碼錯誤';
-  if (msg.includes('network error')) return '網路連線失敗，請稍後再試';
+  if (msg.toLowerCase().includes('network')) return '網路連線失敗，請稍後再試';
   if (msg.includes('Email rate limit')) return '請勿頻繁操作，請稍後再試';
   return msg;
 }
@@ -46,12 +45,13 @@ function showLogin(msg='') {
   document.getElementById('forgot-form').style.display = 'none';
   document.getElementById('signup-msg').textContent = '';
   document.getElementById('forgot-msg').textContent = '';
+  const el = document.getElementById('login-msg');
   if (msg) {
-    document.getElementById('login-msg').textContent = msg;
-    document.getElementById('login-msg').className = 'msg success';
+    el.textContent = msg;
+    el.className = 'msg success';
   } else {
-    document.getElementById('login-msg').textContent = '';
-    document.getElementById('login-msg').className = 'msg';
+    el.textContent = '';
+    el.className = 'msg';
   }
 }
 function showForgot() {
@@ -63,9 +63,9 @@ function showForgot() {
   document.getElementById('forgot-msg').textContent = '';
 }
 function setLoading(isLoading) {
-  document.getElementById('login-btn').classList.toggle('loading', isLoading);
-  document.getElementById('signup-btn').classList.toggle('loading', isLoading);
-  document.getElementById('forgot-btn').classList.toggle('loading', isLoading);
+  document.getElementById('login-btn')?.classList.toggle('loading', isLoading);
+  document.getElementById('signup-btn')?.classList.toggle('loading', isLoading);
+  document.getElementById('forgot-btn')?.classList.toggle('loading', isLoading);
 }
 
 // ============ 忘記密碼 ============
@@ -91,133 +91,106 @@ async function handleForgot(e) {
   }
 }
 
-// ============ 註冊 ============
+// ============ 註冊（只 signUp，不手動 insert players） ============
 async function signUp() {
   setLoading(true);
-  document.getElementById('signup-msg').textContent = '';
   const email = document.getElementById('signup-email').value.trim();
   const password = document.getElementById('signup-password').value;
   const username = document.getElementById('signup-username').value.trim();
+  const msgEl = document.getElementById('signup-msg');
+
   if (!email || !password || !username) {
-    document.getElementById('signup-msg').textContent = '請填寫所有欄位';
+    msgEl.textContent = '請填寫所有欄位';
     setLoading(false);
     return;
   }
-  let data, error;
+
   try {
-    ({ data, error } = await client.auth.signUp({
+    const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
-        emailRedirectTo: 'https://shierusha.github.io/login/reset'
+        // 把玩家名稱丟進 raw_user_meta_data，資料庫觸發器會拿來建 players
+        data: { username },
+        // 驗證後導回的頁面（你可以改成自己的確認頁）
+        emailRedirectTo: 'https://shierusha.github.io/login/confirm'
       }
-    }));
-  } catch (e) {
-    document.getElementById('signup-msg').textContent = '無法連線到伺服器';
-    setLoading(false);
-    return;
-  }
-  if (error) {
-    document.getElementById('signup-msg').textContent = '註冊失敗: ' + transErrorMsg(error.message);
-    setLoading(false);
-    return;
-  }
-  const user = data.user;
-  if (!user) {
-    document.getElementById('signup-msg').textContent = '請檢查信箱驗證設定，註冊未成功。';
-    setLoading(false);
-    return;
-  }
-  let insertError;
-  try {
-    ({ error: insertError } = await client.from('players').insert({
-      player_id: user.id,
-      email: email,
-      username: username,
-      role: 'player'
-    }));
-  } catch (e) {
-    document.getElementById('signup-msg').textContent = '無法連線到伺服器';
-    setLoading(false);
-    return;
-  }
-  if (insertError) {
-      console.error('Insert player error:', insertError); // 新增這行
+    });
 
-    document.getElementById('signup-msg').textContent = '玩家資料儲存失敗: ' + transErrorMsg(insertError.message);
     setLoading(false);
-    return;
+    if (error) {
+      msgEl.textContent = '註冊失敗: ' + transErrorMsg(error.message);
+      return;
+    }
+
+    // 有開啟 Email Confirm：此時通常沒有 session，但 DB 觸發器已自動建立 players
+    showLogin('註冊成功，請到信箱完成驗證再登入！');
+  } catch (e) {
+    setLoading(false);
+    msgEl.textContent = '無法連線到伺服器';
   }
-  setLoading(false);
-  showLogin('註冊成功，請驗證信箱！');
 }
 
-// ============ 登入 ============
+// ============ 登入（用 email 撈真正的 player_id） ============
 async function signIn() {
   setLoading(true);
-  document.getElementById('login-msg').textContent = '';
   const email = document.getElementById('login-email').value.trim();
   const password = document.getElementById('login-password').value;
+  const msgEl = document.getElementById('login-msg');
+
   if (!email || !password) {
-    document.getElementById('login-msg').textContent = '請輸入帳號與密碼';
+    msgEl.textContent = '請輸入帳號與密碼';
     setLoading(false);
     return;
   }
-  let data, error;
-  try {
-    ({ data, error } = await client.auth.signInWithPassword({ email, password }));
-  } catch (e) {
-    document.getElementById('login-msg').textContent = '無法連線到伺服器';
-    setLoading(false);
-    return;
-  }
-  if (error) {
-    document.getElementById('login-msg').textContent = '登入失敗: ' + transErrorMsg(error.message);
-    setLoading(false);
-    return;
-  }
-  const user = data.user;
-  if (!user) {
-    document.getElementById('login-msg').textContent = '帳號異常，請確認信箱驗證';
-    setLoading(false);
-    return;
-  }
-  localStorage.setItem('player_id', user.id);
 
-  // 查 players 資料表取得身份
-  let player, playerError;
   try {
-    ({ data: player, error: playerError } = await client
+    const { data, error } = await client.auth.signInWithPassword({ email, password });
+    if (error) {
+      msgEl.textContent = '登入失敗: ' + transErrorMsg(error.message);
+      setLoading(false);
+      return;
+    }
+
+    const user = data.user;
+    if (!user) {
+      msgEl.textContent = '帳號異常，請確認信箱驗證';
+      setLoading(false);
+      return;
+    }
+
+    // ✅ 用 email 去 players 撈真正的 player_id / role / username（與 RLS 相容）
+    const { data: player, error: playerError } = await client
       .from('players')
-      .select('*')
-      .eq('player_id', user.id)
-      .single());
-  } catch (e) {
-    document.getElementById('login-msg').textContent = '無法查詢玩家資料';
-    setLoading(false);
-    return;
-  }
-  if (playerError) {
-    document.getElementById('login-msg').textContent = '查無玩家資料，請重新註冊';
-    setLoading(false);
-    return;
-  }
-  localStorage.setItem('player_username', player.username);
+      .select('player_id, username, role, email')
+      .eq('email', user.email)
+      .single();
 
-  // 依照身份自動導頁
-  if (player.role === 'admin') {
-    setTimeout(() => {
-      window.location.href = 'admin'; // 這裡改成你管理頁網址
-    }, 600);
-  } else {
-    setTimeout(() => {
-      window.location.href = 'https://shierusha.github.io/create-student/player'; // 這裡是玩家首頁
-    }, 600);
+    if (playerError || !player) {
+      msgEl.textContent = '查無玩家資料，請完成信箱驗證或稍後再試';
+      setLoading(false);
+      return;
+    }
+
+    // 存真正的 player_id（不是 auth 的 user.id）
+    localStorage.setItem('player_id', player.player_id);
+    localStorage.setItem('player_username', player.username);
+
+    setLoading(false);
+
+    // 依照身份導頁
+    if (player.role === 'admin') {
+      window.location.href = 'admin'; // 管理者首頁
+    } else {
+      window.location.href = 'https://shierusha.github.io/create-student/player'; // 玩家首頁
+    }
+  } catch (e) {
+    msgEl.textContent = '無法連線到伺服器';
+    setLoading(false);
   }
 }
 
-
 // 初始化顯示登入
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', function () {
   showLogin();
 });

@@ -138,7 +138,7 @@ $('btnSave').onclick = async ()=>{
     await client.from('student_notes').insert(rows);
 
     // 返回管理頁（同分頁）
-    location.href = 'https://shierusha.github.io/create-student/player_manage';
+    location.href = 'player_manage';
   }catch(e){
     console.error(e); setMsg('儲存失敗：' + (e?.message || e), true);
   }

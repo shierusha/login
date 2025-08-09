@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>謝爾夏｜角色設定／裡設定（管理員修改）</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{--blue:#1767a0;--soft:#eef2fa;--text:#1d4076;--warn:#f66464}
+    body{font-family:'Noto Sans TC',sans-serif;background:#f4f7fa;margin:0;padding:2rem}
+    .wrap{max-width:860px;margin:auto;background:#fff;border-radius:1.2rem;box-shadow:0 2px 16px #0001;padding:1.3rem 1.2rem}
+    h2{margin:.2rem 0 .2rem}
+    .sub{color:#3d648d;margin-bottom:1rem}
+    .msg{min-height:1.2em;margin:.5rem 0}
+    .row{display:flex;align-items:flex-start;gap:.6rem;margin:.6rem 0}
+    .pill{display:inline-flex;align-items:center;gap:.35rem;background:var(--soft);color:var(--text);padding:.25rem .6rem;border-radius:999px}
+    textarea{flex:1;min-height:72px;padding:.6rem;border:1px solid #dcdfe6;border-radius:.6rem;background:#f7f9fd;font-family:inherit}
+    .btns{display:flex;gap:.6rem;flex-wrap:wrap;margin-top:1rem;justify-content:flex-end}
+    button{background:var(--blue);color:#fff;border:none;border-radius:.6rem;padding:.55rem .95rem;font-weight:700;cursor:pointer}
+    .ghost{background:#d7e4f5;color:#1d4076}
+    .warn{background:var(--warn)}
+    .del{background:#e74c3c}
+    .row .del{align-self:stretch}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+<div class="wrap">
+  <h2>角色設定／裡設定（管理員修改）</h2>
+  <div class="sub">角色：<span id="stuName">載入中…</span></div>
+  <div class="msg" id="msg"></div>
+
+  <div id="noteList"></div>
+
+  <div class="btns">
+    <button class="ghost" id="btnAdd">＋ 新增一條</button>
+    <button class="warn" id="btnSave">儲存並返回</button>
+    <button class="ghost" id="btnBack">取消返回</button>
+  </div>
+</div>
+
+<script>
+/* ========= Supabase ========= */
+const client = window.supabase.createClient(
+  'https://wfhwhvodgikpducrhgda.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
+);
+
+/* ========= 工具 ========= */
+const $ = id => document.getElementById(id);
+function setMsg(s, bad=false){ $('msg').innerHTML = s ? `<span style="color:${bad?'#d44':'#1767a0'}">${s}</span>`:'' }
+function qs(key){ return new URL(location.href).searchParams.get(key); }
+
+/* ========= 權限：僅管理員 ========= */
+async function checkAdmin(){
+  const { data:{ user } } = await client.auth.getUser();
+  if(!user){ alert('請先登入'); location.href='login.html'; return false; }
+  const { data, error } = await client.from('players').select('role').eq('email', user.email).single();
+  if(error || !data){ alert('帳號資料錯誤，請重新登入'); location.href='login.html'; return false; }
+  if(data.role !== 'admin'){ alert('你不是管理員，無權進入'); location.href='login.html'; return false; }
+  return true;
+}
+
+/* ========= 狀態 ========= */
+let STUDENT_ID = null;
+let notes = []; // {content,is_public,sort_order}
+
+/* ========= 載入 ========= */
+async function loadAll(){
+  try{
+    setMsg('載入中…');
+    const { data: stu } = await client.from('students').select('name').eq('student_id', STUDENT_ID).single();
+    $('stuName').textContent = stu?.name || '(未命名)';
+    const { data: nts } = await client.from('student_notes')
+      .select('content,is_public,sort_order')
+      .eq('student_id', STUDENT_ID);
+    notes = (nts||[]).slice().sort((a,b)=>(a.sort_order??0)-(b.sort_order??0));
+    if(!notes.length) notes = [{ content:'', is_public:true, sort_order:10 }];
+    renderList();
+    setMsg('');
+  }catch(e){
+    console.error(e); setMsg('載入失敗', true);
+  }
+}
+
+/* ========= 渲染（原第5頁互動：顯示勾選＋textarea＋刪除） ========= */
+function renderList(){
+  const box = $('noteList'); box.innerHTML = '';
+  notes.forEach((n,i)=>{
+    const row = document.createElement('div'); row.className='row';
+    row.innerHTML = `
+      <label class="pill">
+        <input type="checkbox" ${n.is_public?'checked':''} />
+        顯示
+      </label>
+      <textarea maxlength="80" placeholder="請輸入角色設定／裡設定">${escapeHTML(n.content||'')}</textarea>
+      <button type="button" class="del">刪除</button>
+    `;
+    const cb = row.querySelector('input[type="checkbox"]');
+    const ta = row.querySelector('textarea');
+    const del = row.querySelector('.del');
+    cb.onchange = ()=> n.is_public = cb.checked;
+    ta.oninput = ()=> n.content = ta.value;
+    del.onclick = ()=>{
+      if(notes.length<=1) return; // 至少保留一條
+      notes.splice(i,1); renderList();
+    };
+    if(notes.length<=1) del.disabled = true;
+    box.appendChild(row);
+  });
+}
+function escapeHTML(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;')}
+
+/* ========= 事件 ========= */
+$('btnAdd').onclick = ()=>{
+  const max = notes.reduce((m,n)=>Math.max(m,n.sort_order??0),0);
+  notes.push({ content:'', is_public:true, sort_order:max+10 });
+  renderList();
+};
+$('btnBack').onclick = ()=> history.back();
+$('btnSave').onclick = async ()=>{
+  try{
+    // 驗證：至少有一條有內容
+    const hasContent = notes.some(n => (n.content||'').trim());
+    if(!hasContent){ alert('請至少填寫一條設定／裡設定'); return; }
+    setMsg('儲存中…');
+
+    // 重排 sort_order：10,20,30…
+    notes.forEach((n,idx)=> n.sort_order=(idx+1)*10);
+
+    // 全刪再寫（與原流程一致）
+    await client.from('student_notes').delete().eq('student_id', STUDENT_ID);
+    const rows = notes.map(n=>({
+      student_id: STUDENT_ID,
+      content: n.content||'',
+      is_public: !!n.is_public,
+      sort_order: n.sort_order
+    }));
+    await client.from('student_notes').insert(rows);
+
+    // 返回管理頁（同分頁）
+    location.href = 'https://shierusha.github.io/create-student/player_manage';
+  }catch(e){
+    console.error(e); setMsg('儲存失敗：' + (e?.message || e), true);
+  }
+};
+
+/* ========= 進入點 ========= */
+document.addEventListener('DOMContentLoaded', async ()=>{
+  if(!(await checkAdmin())) return;
+  STUDENT_ID = qs('student_id');
+  if(!STUDENT_ID){ alert('缺少 student_id'); history.back(); return; }
+  await loadAll();
+});
+</script>
+</body>
+</html>

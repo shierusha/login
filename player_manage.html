@@ -219,11 +219,14 @@ const TEST_STUDENT_IDS = [
   '7712a95b-7884-4e34-8dba-65ff01084b16', //咕咕
   '7edd83a7-3d44-4876-a480-a8bc795f48b3', //碎影
   '094427cf-55dc-45a0-b596-1d4e10a9275d', //01101101010100101
-  'd4818226-3fef-4800-8177-95abfe9b1eea', //小精靈
-  'ee8ea0cd-d664-4b5f-8d0e-0240bf9debdb'//現荔枝
-
+  'd4818226-3fef-4800-8177-95abfe9b1eea', //小靈
+  'ee8ea0cd-d664-4b5f-8d0e-0240bf9debdb'  //現荔枝
 ];
 const SPECIAL_PLAYER_ID = '8aea3076-294c-41f6-bb38-0a99da77c098'; //其實是AI
+
+// ★ 只有這個管理員能上傳背面照
+const BACK_UPLOAD_ADMIN_ID = '32d2c681-43f4-4f24-8014-44cdbe80411d';
+let CURRENT_ADMIN_PLAYER_ID = null; // checkAdmin() 會填入
 
 // ========== Supabase 初始化 ==========
 const client = window.supabase.createClient(
@@ -235,9 +238,12 @@ const client = window.supabase.createClient(
 async function checkAdmin() {
   let { data: { user } } = await client.auth.getUser();
   if (!user) { alert('請先登入！'); location.href='login.html'; return; }
-  let { data, error } = await client.from('players').select('username,role').eq('email', user.email).single();
+  let { data, error } = await client.from('players')
+    .select('player_id,username,role')
+    .eq('email', user.email).single();
   if (error || !data) { alert('帳號資料錯誤，請重新登入'); location.href='login.html'; return; }
   if (data.role !== 'admin') { alert('你不是管理員，無權進入'); location.href='login.html'; return; }
+  CURRENT_ADMIN_PLAYER_ID = data.player_id || null;
 }
 checkAdmin();
 
@@ -311,9 +317,7 @@ function renderTabs() {
 function renderSearchField() {
   const searchFields = TABLES[currentTab].search;
   let html = '';
-  searchFields.forEach(sf=>{
-    html += `<option value="${sf.key}">${sf.name}</option>`;
-  });
+  searchFields.forEach(sf=>{ html += `<option value="${sf.key}">${sf.name}</option>`; });
   document.getElementById('search-field').innerHTML = html;
 }
 
@@ -322,7 +326,6 @@ async function loadData() {
   setMsg("資料載入中...");
   expandRow = null; openCardRow = null;
   if (currentTab === "players") {
-    // 取得玩家與角色數
     let { data: players, error } = await client.from("players").select("player_id,username,email,role");
     if (error) return setMsg("玩家讀取失敗：" + error.message, true);
     let { data: chars } = await client.from("students").select("player_id");
@@ -330,7 +333,6 @@ async function loadData() {
     (chars||[]).forEach(c=>{ charMap[c.player_id]=(charMap[c.player_id]||0)+1; });
     rawData = (players||[]).map(p=>({ ...p, char_count: charMap[p.player_id]||0 }));
   } else if (currentTab === "students") {
-    // 取得學生，加入玩家名，review 狀態
     let { data: students, error } = await client
       .from("students")
       .select("student_id,name,gender,alignment,player_id")
@@ -341,28 +343,21 @@ async function loadData() {
     let playerMap = {};
     (players||[]).forEach(p=>playerMap[p.player_id]=p.username);
 
-    // 白名單與特殊玩家ID過濾
     students = (students||[]).filter(
       s => !TEST_STUDENT_IDS.includes(s.student_id) && s.player_id !== SPECIAL_PLAYER_ID
     );
 
-    // 取得 review 狀態
     let { data: reviews } = await client.from("student_reviews").select("student_id,status");
     let reviewMap = {};
     (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
 
-    // 玩家分群
     let grouped = {};
     students.forEach(s=>{
       const uname = playerMap[s.player_id] || "未知玩家";
       if(!grouped[uname]) grouped[uname] = [];
-      grouped[uname].push({
-        ...s,
-        review_status: reviewMap[s.student_id] || "未審核"
-      });
+      grouped[uname].push({ ...s, review_status: reviewMap[s.student_id] || "未審核" });
     });
 
-    // 分群排序
     rawData = [];
     Object.keys(grouped).sort().forEach(uname=>{
       rawData.push({__isPlayer: true, username: uname});
@@ -382,7 +377,6 @@ function searchTable() {
   filteredData = rawData.filter(row =>
     row.__isPlayer ? false : String(row[field]??"").toLowerCase().includes(kw)
   );
-  // 讓玩家標題也跟著出現（分群時）
   let shownPlayers = new Set(filteredData.map(r=>r.player_id));
   filteredData = rawData.filter(row =>
     (row.__isPlayer && shownPlayers.has(row.player_id)) || !row.__isPlayer
@@ -393,11 +387,8 @@ function searchTable() {
 
 // ========== 主表格渲染 ==========
 function renderTable() {
-  if (currentTab === "players") {
-    renderPlayersTable();
-  } else if (currentTab === "students") {
-    renderStudentsTable();
-  }
+  if (currentTab === "players") renderPlayersTable();
+  else if (currentTab === "students") renderStudentsTable();
 }
 
 // ========== 玩家管理：表格和角色一覽 ==========
@@ -405,17 +396,13 @@ function renderPlayersTable() {
   const fields = TABLES.players.fields;
   let trs = "";
   const start = (currentPage-1)*PAGE_SIZE, end = start+PAGE_SIZE;
-  filteredData.slice(start, end).forEach((row, i) => {
+  filteredData.slice(start, end).forEach((row) => {
     trs += "<tr>";
-    fields.forEach(f => {
-      trs += `<td>${row[f.key]??""}</td>`;
-    });
+    fields.forEach(f => { trs += `<td>${row[f.key]??""}</td>`; });
     trs += `<td>
       <button class="btn" onclick="expandChars('${row.username}')">角色一覽</button>
       ${deleteMode ? `<button class="btn btn-del show" onclick="delPlayer('${row.username}')">刪除</button>` : ""}
     </td></tr>`;
-
-    // 角色一覽展開區
     if (expandRow && expandRow.id === row.username) {
       trs += `<tr class="expand-row"><td colspan="${fields.length+1}">
         <div class="collapse-content">${expandRow.html}</div>
@@ -432,17 +419,12 @@ async function expandChars(username) {
   if (!player) return setMsg("找不到玩家",true);
   let { data: chars } = await client.from("students").select("student_id,name,gender,alignment").eq("player_id", player.player_id);
   let { data: reviews } = await client.from("student_reviews").select("student_id,status");
-  let reviewMap = {};
-  (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
+  let reviewMap = {}; (reviews||[]).forEach(r=>{ reviewMap[r.student_id]=r.status; });
 
   let html = `<div style="font-weight:700;margin-bottom:.7em;">持有角色：</div>
     <table style="width:100%;border-collapse:collapse;">
       <tr>
-        <th>名字</th>
-        <th>性別</th>
-        <th>陣營</th>
-        <th>狀態</th>
-        <th>操作</th>
+        <th>名字</th><th>性別</th><th>陣營</th><th>狀態</th><th>操作</th>
       </tr>
       ${(chars||[]).map(c=>
         `<tr>
@@ -450,9 +432,7 @@ async function expandChars(username) {
           <td>${getGender(c.gender)}</td>
           <td>${getAlignment(c.alignment)}</td>
           <td>${getReviewStatus(c.student_id ? reviewMap[c.student_id] : "")}</td>
-          <td>
-            <button class="btn btn-link" onclick="openStudentCard('${c.student_id}')">學生證</button>
-          </td>
+          <td><button class="btn btn-link" onclick="openStudentCard('${c.student_id}')">學生證</button></td>
         </tr>`
       ).join("")}
     </table>`;
@@ -466,14 +446,11 @@ function renderStudentsTable() {
   const start = (currentPage-1)*PAGE_SIZE, end = start+PAGE_SIZE;
   let slice = filteredData.slice(start, end);
 
-  slice.forEach((row, i) => {
-if(row.__isPlayer) {
-  trs += `<tr>
-    <td colspan="5" style="font-weight:bold;font-size:1.1em;color:#3d648d;">
-      ${row.username}
-    </td></tr>`;
-  return;
-}
+  slice.forEach((row) => {
+    if(row.__isPlayer) {
+      trs += `<tr><td colspan="5" style="font-weight:bold;font-size:1.1em;color:#3d648d;">${row.username}</td></tr>`;
+      return;
+    }
     trs += "<tr>";
     trs += `<td>${row.name||''}</td>`;
     trs += `<td>${getGender(row.gender)}</td>`;
@@ -483,11 +460,15 @@ if(row.__isPlayer) {
       <button class="btn btn-link" onclick="openStudentCard('${row.student_id}')">學生證</button>
       <button class="btn btn-edit" onclick="openReviewModal('${row.student_id}')">審核</button>
       <button class="btn" style="margin-left:0.4em;background:#ffc940;color:#333" onclick="toggleCardRow('${row.student_id}')">設定/裏設定</button>
+      ${
+        (CURRENT_ADMIN_PLAYER_ID === BACK_UPLOAD_ADMIN_ID)
+          ? `<button class="btn" style="margin-left:0.4em;" onclick="openBackUploadModal('${row.student_id}')">背面照</button>`
+          : ``
+      }
       ${deleteMode ? `<button class="btn btn-del show" onclick="delStudent('${row.student_id}')">刪除</button>` : ""}
     </td>`;
     trs += "</tr>";
 
-    // 設定/裏設定展開區
     if (openCardRow && openCardRow === row.student_id) {
       trs += `<tr class="expand-row open-card-row"><td colspan="5">
         <div class="student-card-box">${expandRow.html}</div>
@@ -499,22 +480,16 @@ if(row.__isPlayer) {
 }
 
 // ========== 設定/裏設定 展開 ==========
-
 async function toggleCardRow(student_id) {
-  if (openCardRow === student_id) {
-    openCardRow = null; expandRow = null; renderTable(); return;
-  }
+  if (openCardRow === student_id) { openCardRow = null; expandRow = null; renderTable(); return; }
 
-  // 1. 查 student_notes
   let { data: notes } = await client
     .from("student_notes")
     .select("content,is_public,sort_order")
     .eq("student_id", student_id);
 
-  // 2. 按 sort_order 排序
   notes = (notes || []).slice().sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
 
-  // 3. 拼接 html
   let html = `
     <div style="padding-left:0.5em;">
       <ul style="margin:0;padding:0;list-style:none;">
@@ -523,23 +498,19 @@ async function toggleCardRow(student_id) {
             ? notes.map(n =>
                 `<li style="margin:0.3em 0;white-space:pre-line;">
                   ${n.is_public ? '# ' : '? '}${escapeHTML(n.content)}
-                </li>`
-              ).join('')
+                </li>`).join('')
             : '<li>（無）</li>'
         }
       </ul>
       <div style="margin-top:1.1em;">
-      <button class="btn btn-edit" onclick="location.href='updata.html?student_id=${student_id}'">更新</button>
+        <button class="btn btn-edit" onclick="location.href='updata.html?student_id=${student_id}'">更新</button>
       </div>
     </div>
   `;
-
   openCardRow = student_id;
   expandRow = { id: student_id, html };
   renderTable();
 }
-
-
 
 // ========== 分頁按鈕 ==========
 function renderPagination(tab) {
@@ -558,20 +529,26 @@ function gotoPage(p) { currentPage = p; renderTable(); }
 function toggleDeleteMode() {
   deleteMode = !deleteMode;
   const btn = document.getElementById('delete-toggle-btn');
-  if (deleteMode) {
-    btn.classList.add('active');
-    btn.textContent = '停用刪除';
-  } else {
-    btn.classList.remove('active');
-    btn.textContent = '啟用刪除';
-  }
+  if (deleteMode) { btn.classList.add('active'); btn.textContent = '停用刪除'; }
+  else { btn.classList.remove('active'); btn.textContent = '啟用刪除'; }
   renderTable();
 }
 
-// ========== 玩家&角色 刪除（完整刪除功能）==========
+// ========== Storage URL → 路徑 工具 ==========
+function toStoragePath(s) {
+  if (!s) return '';
+  if (s.includes('://')) {
+    // 例: https://.../student-img/<path>
+    const m = s.match(/\/student-img\/(.+)$/);
+    return m ? m[1] : '';
+  }
+  // 可能已經是相對路徑
+  return s.replace(/^\/+/, '');
+}
 
+// ========== 玩家&角色 刪除（完整刪除功能）==========
 async function deepDeleteStudent(student_id) {
-  // 1. 查出所有舊技能（含 id, custom_skill_uuid, passive_trigger_id）
+  // 1) 查技能
   const { data: skills } = await client
     .from("student_skills")
     .select("id, custom_skill_uuid, passive_trigger_id")
@@ -581,43 +558,35 @@ async function deepDeleteStudent(student_id) {
   const customEffectIds = (skills || []).map(s => s.custom_skill_uuid).filter(Boolean);
   const passiveTriggerIds = (skills || []).map(s => s.passive_trigger_id).filter(Boolean);
 
-  // 2. 刪技能連結表（先砍所有 FK 依賴）
+  // 2) 刪技能連結表
   if (skillIds.length) {
     await client.from("student_skill_effect_links").delete().in("skill_id", skillIds);
     await client.from("student_skill_debuff_links").delete().in("skill_id", skillIds);
   }
-  // 3. 砍掉所有技能本體
-  if (skillIds.length) {
-    await client.from("student_skills").delete().in("id", skillIds);
-  }
+  // 3) 砍技能本體
+  if (skillIds.length) await client.from("student_skills").delete().in("id", skillIds);
 
-  // 4. 再砍這角色用到的 skill_effects、passive_trigger
-  if (customEffectIds.length) {
-    await client.from("skill_effects").delete().in("effect_id", customEffectIds);
-  }
-  if (passiveTriggerIds.length) {
-    await client.from("passive_trigger").delete().in("trigger_id", passiveTriggerIds);
-  }
+  // 4) 刪自訂效果與被動觸發
+  if (customEffectIds.length) await client.from("skill_effects").delete().in("effect_id", customEffectIds);
+  if (passiveTriggerIds.length) await client.from("passive_trigger").delete().in("trigger_id", passiveTriggerIds);
 
-  // 5. 刪除 Storage 的圖片本體（這段是新加的！）
+  // 5) 刪 Storage 圖片（用路徑，不用公開網址）
   const { data: images } = await client
     .from("student_images")
     .select("image_url")
     .eq("student_id", student_id);
 
-  if (images && images.length > 0) {
-    const filesToDelete = images.map(img => img.image_url);
-    if (filesToDelete.length > 0) {
-      await client.storage.from('student-img').remove(filesToDelete);
-    }
+  const paths = (images || []).map(x => toStoragePath(x.image_url)).filter(Boolean);
+  if (paths.length) {
+    await client.storage.from('student-img').remove(paths);
   }
 
-  // 6. 刪除表內其他資料
+  // 6) 刪表內其他資料
   await client.from("student_reviews").delete().eq("student_id", student_id);
   await client.from("student_notes").delete().eq("student_id", student_id);
   await client.from("student_images").delete().eq("student_id", student_id);
 
-  // 7. 刪學生本體
+  // 7) 刪學生本體
   await client.from("students").delete().eq("student_id", student_id);
 
   console.log("角色完全刪除乾淨", student_id);
@@ -629,9 +598,7 @@ async function delPlayer(username) {
   let { data: player } = await client.from("players").select("player_id").eq("username", username).single();
   if (!player) return setMsg("查無此玩家",true);
   let { data: students } = await client.from("students").select("student_id").eq("player_id", player.player_id);
-  for (let stu of (students || [])) {
-    await deepDeleteStudent(stu.student_id);
-  }
+  for (let stu of (students || [])) await deepDeleteStudent(stu.student_id);
   let { error } = await client.from("players").delete().eq("player_id", player.player_id);
   if (error) setMsg("刪除失敗: " + error.message,true);
   else setMsg("已刪除玩家及其角色");
@@ -641,16 +608,12 @@ async function delStudent(student_id) {
   if (!deleteMode) return;
   if (!confirm('確定要刪除這個角色？')) return;
   setMsg('刪除中…');
-  try {
-    await deepDeleteStudent(student_id);
-    setMsg("已刪除角色");
-  } catch (e) {
-    setMsg("刪除失敗: " + (e.message || e), true);
-  }
+  try { await deepDeleteStudent(student_id); setMsg("已刪除角色"); }
+  catch (e) { setMsg("刪除失敗: " + (e.message || e), true); }
   await loadData();
 }
 
-// ========== 學生證（新分頁打開） ==========
+// ========== 學生證 ==========
 async function openStudentCard(student_id) {
   let { data } = await client.from("students").select("student_code").eq("student_id", student_id).single();
   if(data && data.student_code){
@@ -663,23 +626,20 @@ async function openStudentCard(student_id) {
 // ========== 角色管理：審核彈窗 ==========
 let reviewStudentId = null, reviewStatusValue = null;
 const reviewStatusEnum = [
-  {key: "", label: "未審核"}, 
+  {key: "", label: "未審核"},
   {key: "PASS", label: "已通過"},
   {key: "WAIT", label: "審核中"},
-  {key: "BAD", label: "未通過"}
+  {key: "BAD",  label: "未通過"}
 ];
 
 async function openReviewModal(student_id) {
   reviewStudentId = student_id;
   let { data } = await client.from("student_reviews").select("status").eq("student_id", student_id).single();
   reviewStatusValue = (data && data.status) || "WAIT";
-  // 取得學生原本學號
   let { data: stu } = await client.from("students").select("student_code").eq("student_id", student_id).single();
   renderReviewRadio();
   document.getElementById('review-modal-bg').style.display = 'flex';
-  if(stu && stu.student_code){
-    document.getElementById('student-code-input').value = stu.student_code;
-  }
+  if(stu && stu.student_code) document.getElementById('student-code-input').value = stu.student_code;
 }
 
 function renderReviewRadio() {
@@ -693,44 +653,27 @@ function renderReviewRadio() {
   ).join('');
   html += `
     <div class="radio-row">
-      <label>
-        學號（01-99）：
+      <label>學號（01-99）：
         <input type="text" id="student-code-input" style="margin-left:0.5em;" placeholder="請輸入學號">
       </label>
       <div id="student-code-msg" style="color:#d44;margin-top:0.3em;"></div>
     </div>
     <div style="margin-top:1em;">
       <button class="btn btn-edit" onclick="saveReviewStatus()">儲存</button>
-    </div>
-  `;
+    </div>`;
   document.getElementById('review-status-list').innerHTML = html;
 }
-
-function closeReviewModal() {
-  document.getElementById('review-modal-bg').style.display = 'none';
-  reviewStudentId = null;
-}
-function setReviewStatus(val) {
-  reviewStatusValue = val;
-}
+function closeReviewModal() { document.getElementById('review-modal-bg').style.display = 'none'; reviewStudentId = null; }
+function setReviewStatus(val) { reviewStatusValue = val; }
 
 // ========== 狀態格式化 ==========
-function getGender(g) {
-  if (g === "M") return "男";
-  if (g === "F") return "女";
-  if (g === "O") return "其他";
-  return "-";
-}
-function getAlignment(a) {
-  if (a === "white") return "白";
-  if (a === "black") return "黑";
-  return a || "-";
-}
+function getGender(g) { if (g==="M") return "男"; if (g==="F") return "女"; if (g==="O") return "其他"; return "-"; }
+function getAlignment(a) { if (a==="white") return "白"; if (a==="black") return "黑"; return a || "-"; }
 function getReviewStatus(s) {
-  if (s === "WAIT") return `<span style="color:#33a853;font-weight:700">審核中</span>`;      // 綠色
-  if (s === "PASS") return `<span style="color:#1767a0;font-weight:700">已通過</span>`;
-  if (s === "BAD") return `<span style="color:#f66464;font-weight:700">未通過</span>`;      // 紅色
-  if (s === "ERROR") return `<span style="color:#f66464;font-weight:700">錯誤</span>`;      // 紅色
+  if (s === "WAIT")  return `<span style="color:#33a853;font-weight:700">審核中</span>`;
+  if (s === "PASS")  return `<span style="color:#1767a0;font-weight:700">已通過</span>`;
+  if (s === "BAD")   return `<span style="color:#f66464;font-weight:700">未通過</span>`;
+  if (s === "ERROR") return `<span style="color:#f66464;font-weight:700">錯誤</span>`;
   return "未審核";
 }
 
@@ -741,70 +684,46 @@ function setMsg(msg, err) {
 
 // ========== 載入 ==========
 document.addEventListener('DOMContentLoaded', function () {
+  ensureBackUploadModal(); // 自動插入「背面照上傳」彈窗 DOM
+  bindBackCanvasEvents();  // 綁定背面照 Canvas 事件
+
   renderTabs();
   renderSearchField();
   document.getElementById('players-table-wrap').style.display = '';
   loadData();
   document.getElementById('search').oninput = searchTable;
   document.getElementById('delete-toggle-btn').onclick = toggleDeleteMode;
-  // modal 關閉
   document.querySelector('.modal-bg .close-btn').onclick = closeReviewModal;
 });
 
-// ========== 審核狀態儲存（reviewer_id、學號 NULL、審核細節）==========
+// ========== 審核狀態儲存 ==========
 async function saveReviewStatus() {
   const codeInput = document.getElementById('student-code-input');
   const codeMsg = document.getElementById('student-code-msg');
   const student_code = (codeInput.value || '').trim();
 
-  // 狀態 PASS 才檢查學號唯一
   if(reviewStatusValue === "PASS") {
-    if(!student_code) {
-      codeMsg.textContent = "請輸入學號";
-      return;
-    }
-    // 唯一性
-    let { data, error } = await client.from("students").select("student_id").eq("student_code", student_code).neq("student_id", reviewStudentId).single();
-    if(data) {
-      codeMsg.textContent = "學號重複，請換一個";
-      return;
-    }
+    if(!student_code) { codeMsg.textContent = "請輸入學號"; return; }
+    let { data } = await client.from("students").select("student_id")
+      .eq("student_code", student_code).neq("student_id", reviewStudentId).single();
+    if(data) { codeMsg.textContent = "學號重複，請換一個"; return; }
     await client.from("students").update({student_code}).eq("student_id", reviewStudentId);
   }
-  // **未審核直接清空學號**
   if (reviewStatusValue === "" || reviewStatusValue === null) {
     await client.from("students").update({student_code: null}).eq("student_id", reviewStudentId);
   }
 
-  // 取得 reviewer_id（當前登入管理員 player_id）
   let { data: { user } } = await client.auth.getUser();
   if (!user) { alert('請先登入'); return; }
   let { data: adminData } = await client.from('players').select('player_id').eq('email', user.email).single();
   let reviewer_id = adminData ? adminData.player_id : null;
 
-  // 更新審核狀態
   let { data } = await client.from("student_reviews").select("student_id").eq("student_id", reviewStudentId).single();
   let statusValue = reviewStatusValue || null;
+  const updateData = { status: statusValue, reviewer_id: (statusValue==="WAIT"||statusValue==="PASS") ? reviewer_id : null };
 
-  const updateData = {
-    status: statusValue
-  };
-
-  // 狀態是「審核中」或「通過」都記錄 reviewer_id，其它清空 reviewer_id
-  if (statusValue === "WAIT" || statusValue === "PASS") {
-    updateData.reviewer_id = reviewer_id;
-  } else {
-    updateData.reviewer_id = null;
-  }
-
-  if (data) {
-    await client.from("student_reviews").update(updateData).eq("student_id", reviewStudentId);
-  } else {
-    await client.from("student_reviews").insert({
-      student_id: reviewStudentId,
-      ...updateData
-    });
-  }
+  if (data) await client.from("student_reviews").update(updateData).eq("student_id", reviewStudentId);
+  else await client.from("student_reviews").insert({ student_id: reviewStudentId, ...updateData });
 
   closeReviewModal();
   loadData();
@@ -812,10 +731,8 @@ async function saveReviewStatus() {
 
 function escapeHTML(str) {
   return String(str || "")
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;').replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
 }
 
@@ -832,7 +749,191 @@ window.openStudentCard = openStudentCard;
 window.searchTable = searchTable;
 window.saveReviewStatus = saveReviewStatus;
 
+// ======================================================
+// ============ 背面照上傳（內建彈窗 + Canvas） ==========
+// ======================================================
+
+let backUploadStuId = null;
+let backImg = null;
+let backImgX = 200, backImgY = 225, backScale = 1, backRotation = 0, backMirrored = false;
+let backDragging = false, backLastX = 0, backLastY = 0, backPinchStart = null, backPinchInit = {};
+let backCanvas = null, backCtx = null;
+
+function ensureBackUploadModal() {
+  if (document.getElementById('back-upload-modal-bg')) return;
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `
+  <div class="modal-bg" id="back-upload-modal-bg" style="display:none;">
+    <div class="modal" style="max-width:97vw;">
+      <button class="close-btn" type="button" onclick="closeBackUploadModal()">×</button>
+      <h3>上傳背面照片</h3>
+      <div id="back-canvas-wrap" style="position: relative; width: 100%; max-width: 400px; aspect-ratio: 8 / 9; margin: auto; display: flex; justify-content: center; align-items: center;">
+        <canvas id="back-edit-canvas" width="400" height="450" style="width:100%; height:100%; max-width:400px; max-height:450px; display:block; background:#ddd; border-radius:.7em;"></canvas>
+        <img src="https://shierusha.github.io/create-student/imgs/export-0.png" id="back-redbox-frame" alt="紅框定位圖" style="position:absolute; left:0; top:0; width:100%; height:100%; max-width:400px; max-height:450px; pointer-events:none; z-index:10; object-fit:contain;">
+      </div>
+      <input type="file" id="back-upload-file" accept="image/*"><br>
+      <div class="modal-actions" style="margin-top:.6em;">
+        <button type="button" class="btn" onclick="toggleBackMirror()">鏡射</button>
+        <button type="button" class="btn" onclick="submitBackCanvasImage()">儲存上傳</button>
+      </div>
+      <div id="back-upload-msg" style="margin-top:.6em;color:#1767a0;"></div>
+      <div class="hint" style="font-size:.95em;color:#888;margin-top:.6em;">
+        電腦：A/D旋轉、拖移、滾輪縮放；手機：雙指縮放/旋轉，單指拖移
+      </div>
+    </div>
+  </div>`;
+  document.body.appendChild(wrap.firstElementChild);
+}
+
+function bindBackCanvasEvents() {
+  backCanvas = document.getElementById('back-edit-canvas');
+  if (!backCanvas) return;
+  backCtx = backCanvas.getContext('2d');
+
+  document.getElementById('back-upload-file').onchange = function(e) {
+    const file = e.target.files[0]; if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(evt) {
+      backImg = new Image();
+      backImg.onload = function() {
+        backScale = Math.max(400 / backImg.width, 450 / backImg.height);
+        backImgX = 200; backImgY = 225; backRotation = 0; backMirrored = false;
+        drawBackCanvas();
+      };
+      backImg.src = evt.target.result;
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // 滑鼠
+  backCanvas.onmousedown = (e)=>{ if(!backImg) return; backDragging = true; backLastX=e.offsetX; backLastY=e.offsetY; };
+  backCanvas.onmouseup = backCanvas.onmouseleave = ()=> backDragging = false;
+  backCanvas.onmousemove = (e)=>{ if(!backDragging) return; backImgX += e.offsetX-backLastX; backImgY += e.offsetY-backLastY; backLastX=e.offsetX; backLastY=e.offsetY; drawBackCanvas(); };
+  backCanvas.onwheel = (e)=>{ if(!backImg) return; e.preventDefault(); backScale *= (e.deltaY<0)?1.04:0.96; drawBackCanvas(); };
+
+  // 鍵盤旋轉
+  window.addEventListener('keydown', function(e){
+    const modal = document.getElementById('back-upload-modal-bg');
+    if(!backImg || !modal || modal.style.display === 'none') return;
+    if(e.key==='a'||e.key==='A'){ backRotation -= Math.PI/60; drawBackCanvas(); }
+    if(e.key==='d'||e.key==='D'){ backRotation += Math.PI/60; drawBackCanvas(); }
+  });
+
+  // 觸控
+  backCanvas.addEventListener('touchstart', function(e){
+    if(!backImg) return;
+    const rect = backCanvas.getBoundingClientRect();
+    if(e.touches.length===1){
+      backDragging=true;
+      backLastX=e.touches[0].clientX-rect.left;
+      backLastY=e.touches[0].clientY-rect.top;
+    }else if(e.touches.length===2){
+      backPinchStart=[
+        {x:e.touches[0].clientX,y:e.touches[0].clientY},
+        {x:e.touches[1].clientX,y:e.touches[1].clientY}
+      ];
+      backPinchInit={ backScale, backRotation, backImgX, backImgY };
+    }
+  },{passive:false});
+
+  backCanvas.addEventListener('touchend', ()=>{ backDragging=false; backPinchStart=null; },{passive:false});
+
+  backCanvas.addEventListener('touchmove', function(e){
+    if(!backImg) return; e.preventDefault();
+    const rect = backCanvas.getBoundingClientRect();
+    if(e.touches.length===1 && backDragging){
+      const x=e.touches[0].clientX-rect.left, y=e.touches[0].clientY-rect.top;
+      backImgX += x-backLastX; backImgY += y-backLastY; backLastX=x; backLastY=y; drawBackCanvas();
+    }else if(e.touches.length===2 && backPinchStart){
+      const now=[
+        {x:e.touches[0].clientX,y:e.touches[0].clientY},
+        {x:e.touches[1].clientX,y:e.touches[1].clientY}
+      ];
+      const dist0=Math.hypot(backPinchStart[0].x-backPinchStart[1].x, backPinchStart[0].y-backPinchStart[1].y);
+      const distN=Math.hypot(now[0].x-now[1].x, now[0].y-now[1].y);
+      backScale = backPinchInit.backScale*(distN/dist0);
+      const angle0=Math.atan2(backPinchStart[1].y-backPinchStart[0].y, backPinchStart[1].x-backPinchStart[0].x);
+      const angleN=Math.atan2(now[1].y-now[0].y, now[1].x-now[0].x);
+      backRotation = backPinchInit.backRotation+(angleN-angle0);
+      const c0={x:(backPinchStart[0].x+backPinchStart[1].x)/2, y:(backPinchStart[0].y+backPinchStart[1].y)/2};
+      const cN={x:(now[0].x+now[1].x)/2, y:(now[0].y+now[1].y)/2};
+      backImgX = backPinchInit.backImgX+(cN.x-c0.x);
+      backImgY = backPinchInit.backImgY+(cN.y-c0.y);
+      drawBackCanvas();
+    }
+  },{passive:false});
+}
+
+function drawBackCanvas() {
+  if (!backCtx) return;
+  backCtx.clearRect(0,0,400,450);
+  if (!backImg) return;
+  backCtx.save();
+  backCtx.translate(backImgX, backImgY);
+  backCtx.rotate(backRotation);
+  backCtx.scale(backMirrored ? -backScale : backScale, backScale);
+  backCtx.drawImage(backImg, -backImg.width/2, -backImg.height/2);
+  backCtx.restore();
+}
+function toggleBackMirror(){ backMirrored=!backMirrored; drawBackCanvas(); }
+function setBackUploadMsg(msg){ const el=document.getElementById('back-upload-msg'); if(el) el.textContent=msg||''; }
+
+function openBackUploadModal(student_id) {
+  if (CURRENT_ADMIN_PLAYER_ID !== BACK_UPLOAD_ADMIN_ID) { alert('你沒有權限上傳背面照'); return; }
+  backUploadStuId = student_id;
+  backImg = null; backMirrored = false; backImgX = 200; backImgY = 225; backScale = 1; backRotation = 0;
+  const fileInput = document.getElementById('back-upload-file'); if (fileInput) fileInput.value = '';
+  setBackUploadMsg('');
+  const modal=document.getElementById('back-upload-modal-bg'); if(modal) modal.style.display='flex';
+  drawBackCanvas();
+}
+function closeBackUploadModal(){ const modal=document.getElementById('back-upload-modal-bg'); if(modal) modal.style.display='none'; backUploadStuId=null; backImg=null; }
+
+async function submitBackCanvasImage() {
+  if (!backImg || !backUploadStuId) { setBackUploadMsg('請先選擇圖片'); return; }
+  setBackUploadMsg('上傳中...');
+
+  backCanvas.toBlob(async (blob)=>{
+    try{
+      const filePath = `student-images/${backUploadStuId}/back.png`;
+
+      // 先刪舊檔（你接受這種模式）
+      await client.storage.from('student-img').remove([filePath]);
+
+      // 上傳
+      const { error: uploadErr } = await client.storage.from('student-img').upload(filePath, blob, { upsert: true });
+      if (uploadErr) throw uploadErr;
+
+      // 取 public URL（之後如要顯示，加 ?v=Date.now() 破快取）
+      const { data: { publicUrl } } = client.storage.from('student-img').getPublicUrl(filePath);
+
+      // 表內唯一：刪舊同類型紀錄
+      await client.from('student_images').delete().eq('student_id', backUploadStuId).eq('image_type', 'back');
+
+      // 寫入新紀錄
+      const { error: insertErr } = await client.from('student_images').insert([{
+        student_id: backUploadStuId,
+        image_type: 'back',
+        image_url: publicUrl,
+        uploaded_by: CURRENT_ADMIN_PLAYER_ID
+      }]);
+      if (insertErr) throw insertErr;
+
+      setBackUploadMsg('上傳完成！');
+      setTimeout(()=>{ closeBackUploadModal(); }, 600);
+    }catch(e){
+      console.error(e);
+      setBackUploadMsg('上傳失敗：' + (e.message || e));
+    }
+  }, 'image/png');
+}
+
+window.openBackUploadModal = openBackUploadModal;
+window.closeBackUploadModal = closeBackUploadModal;
+window.submitBackCanvasImage = submitBackCanvasImage;
+window.toggleBackMirror = toggleBackMirror;
 </script>
+
 
 </body>
 </html>

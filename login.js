@@ -106,30 +106,24 @@ async function signUp() {
   }
 
   try {
-    const { data, error } = await client.auth.signUp({
+    const { error } = await client.auth.signUp({
       email,
       password,
       options: {
-        // 把玩家名稱丟進 raw_user_meta_data，資料庫觸發器會拿來建 players
-        data: { username },
-        // 驗證後導回的頁面（你可以改成自己的確認頁）
-        emailRedirectTo: 'https://shierusha.github.io/login/reset'
+        data: { username },                                   // 觸發器會拿這個
+        emailRedirectTo: 'https://shierusha.github.io/login/reset'  // 你指定的頁
       }
     });
 
     setLoading(false);
-    if (error) {
-      msgEl.textContent = '註冊失敗: ' + transErrorMsg(error.message);
-      return;
-    }
-
-    // 有開啟 Email Confirm：此時通常沒有 session，但 DB 觸發器已自動建立 players
+    if (error) { msgEl.textContent = '註冊失敗: ' + transErrorMsg(error.message); return; }
     showLogin('註冊成功，請到信箱完成驗證再登入！');
-  } catch (e) {
+  } catch {
     setLoading(false);
     msgEl.textContent = '無法連線到伺服器';
   }
 }
+
 
 // ============ 登入（用 email 撈真正的 player_id） ============
 async function signIn() {

@@ -16,7 +16,7 @@
       <button onclick="location.href='https://shierusha.github.io/create-student/player_manage'">自家孩兒</button>
       <button onclick="location.href='https://shierusha.github.io/create-student/stidcard/shierusha-stu'">創角</button>
       <button onclick="window.open('https://shierusha.github.io/school-battle/students/AllStu', '_blank')">學生名冊</button>
-<button id="toggle-signup"></button>
+<button id="toggle-signup" disabled>載入註冊狀態中…</button>
 
       <button style="background: #999;" onclick="logout()">登出</button>
     </div>
@@ -56,22 +56,26 @@
 
   // ===== 註冊開關：讀取狀態 + 點擊切換 =====
   async function refreshSignupButton() {
-    const btn = document.getElementById('toggle-signup');
-    btn.disabled = true;
-    btn.textContent = '讀取中…';
+  const btn = document.getElementById('toggle-signup');
+  btn.disabled = true;
+  btn.textContent = '讀取中…';
 
-    const { data, error } = await client.rpc('get_signup_enabled');
-    if (error) {
-      console.error(error);
-      alert('讀取註冊狀態失敗');
-      btn.textContent = '讀取失敗';
-      return;
-    }
-    const enabled = !!data;
-    btn.dataset.enabled = String(enabled);
-    btn.textContent = enabled ? '目前：開放註冊（點我關閉）' : '目前：關閉註冊（點我開啟）';
+  const { data, error } = await client.rpc('get_signup_enabled');
+  if (error) {
+    console.error(error);
+    btn.textContent = '讀取失敗（點我重試）';
     btn.disabled = false;
+    // 讓使用者可以點按鈕重試
+    btn.onclick = () => refreshSignupButton();
+    return;
   }
+
+  const enabled = Boolean(data);
+  btn.dataset.enabled = String(enabled);
+  btn.textContent = enabled ? '目前：開放註冊（點我關閉）' : '目前：關閉註冊（點我開啟）';
+  btn.disabled = false;
+}
+
 
   function initSignupToggle() {
     const btn = document.getElementById('toggle-signup');

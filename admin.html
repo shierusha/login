@@ -20,38 +20,79 @@
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script>
-    // Supabase 初始化
-    const client = window.supabase.createClient(
-      'https://wfhwhvodgikpducrhgda.supabase.co',
-      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
-    );
-    // 檢查登入狀態+權限
-    async function checkAdmin() {
-      let { data: { user } } = await client.auth.getUser();
-      if (!user) {
-        location.href='login.html'; return;
-      }
-      let { data, error } = await client.from('players').select('username,role').eq('email', user.email).single();
-      if (error || !data) {
-        location.href='login.html'; return;
-      }
-      if (data.role !== 'admin') {
-        location.href='login.html'; return;
-      }
-      document.getElementById('admin-welcome').textContent = `歡迎偉大的 ${data.username} 管理者`;
+ <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // ✅ 用你原本這組 client（不要再創第二個）
+  const client = window.supabase.createClient(
+    'https://wfhwhvodgikpducrhgda.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
+  );
+
+  // ===== 登出 =====
+  async function logout() {
+    await client.auth.signOut();
+    location.href = 'login.html';
+  }
+
+  // ===== 管理員檢查（允許 admin / superadmin）+ 啟用開關按鈕 =====
+  async function checkAdminAndInit() {
+    const { data: { user } } = await client.auth.getUser();
+    if (!user) return location.href = 'login.html';
+
+    const { data, error } = await client
+      .from('players')
+      .select('username, role')
+      .eq('email', user.email)
+      .single();
+
+    if (error || !data) return location.href = 'login.html';
+    if (!['admin','superadmin'].includes(data.role)) return location.href = 'login.html';
+
+    document.getElementById('admin-welcome').textContent = `歡迎偉大的 ${data.username} 管理者`;
+
+    // 通過驗證後，才初始化註冊總開關
+    initSignupToggle();
+  }
+
+  // ===== 註冊開關：讀取狀態 + 點擊切換 =====
+  async function refreshSignupButton() {
+    const btn = document.getElementById('toggle-signup');
+    btn.disabled = true;
+    btn.textContent = '讀取中…';
+
+    const { data, error } = await client.rpc('get_signup_enabled');
+    if (error) {
+      console.error(error);
+      alert('讀取註冊狀態失敗');
+      btn.textContent = '讀取失敗';
+      return;
     }
-    // 登出
-    async function logout() {
-      await client.auth.signOut();
-      location.href = 'login.html';
-    }
-    checkAdmin();
-  </script>  <script>
-// 設定目標 Supabase 的網址與 key（建議用 Service Role Key，這裡只是範例）
-// 切記真的部署時 Service Role Key 不建議放前端
-const GACHA_SUPABASE_URL = 'https://你的supabase網址.supabase.co';
-const GACHA_SUPABASE_KEY = '你的gacha supabase public or service key';
+    const enabled = !!data;
+    btn.dataset.enabled = String(enabled);
+    btn.textContent = enabled ? '目前：開放註冊（點我關閉）' : '目前：關閉註冊（點我開啟）';
+    btn.disabled = false;
+  }
+
+  function initSignupToggle() {
+    const btn = document.getElementById('toggle-signup');
+    btn.addEventListener('click', async () => {
+      const current = btn.dataset.enabled === 'true';
+      btn.disabled = true;
+      btn.textContent = '切換中…';
+      const { error } = await client.rpc('set_signup_enabled', { p_enabled: !current });
+      if (error) {
+        console.error(error);
+        alert('切換失敗：' + error.message);
+      }
+      await refreshSignupButton();
+    });
+    refreshSignupButton();
+  }
+
+  // 啟動
+  checkAdminAndInit();
+</script>
+ <script>
 
 async function sendGachaToken() {
   // 取得使用者 access_token
@@ -88,27 +129,5 @@ async function sendGachaToken() {
 }
   </script>
 
-<script>
-  const supabase = window.supabase.createClient('https://YOUR-PROJECT.supabase.co','YOUR-ANON-KEY');
-
-  // 需要先讓管理員登入（有 players.role='admin' 或 'superadmin'）
-  async function refreshButton() {
-    const { data, error } = await supabase.rpc('get_signup_enabled');
-    if (error) { console.error(error); return; }
-    const enabled = !!data;
-    const btn = document.getElementById('toggle-signup');
-    btn.textContent = enabled ? '目前：開放註冊（點我關閉）' : '目前：關閉註冊（點我開啟）';
-    btn.dataset.enabled = String(enabled);
-  }
-
-  document.getElementById('toggle-signup').addEventListener('click', async () => {
-    const enabled = document.getElementById('toggle-signup').dataset.enabled === 'true';
-    const { error } = await supabase.rpc('set_signup_enabled', { p_enabled: !enabled });
-    if (error) { console.error(error); alert('切換失敗：' + error.message); return; }
-    refreshButton();
-  });
-
-  refreshButton();
-</script>
 </body>
 </html>

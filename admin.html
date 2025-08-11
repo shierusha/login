@@ -94,7 +94,7 @@ async function sendGachaToken() {
   // 需要先讓管理員登入（有 players.role='admin' 或 'superadmin'）
   async function refreshButton() {
     const { data, error } = await supabase.rpc('get_signup_enabled');
-    if (error) { console.error(error); alert('讀取註冊狀態失敗'); return; }
+    if (error) { console.error(error); return; }
     const enabled = !!data;
     const btn = document.getElementById('toggle-signup');
     btn.textContent = enabled ? '目前：開放註冊（點我關閉）' : '目前：關閉註冊（點我開啟）';

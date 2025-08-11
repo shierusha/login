@@ -14,6 +14,8 @@
       <button onclick="location.href='https://shierusha.github.io/create-student/player_manage'">自家孩兒</button>
       <button onclick="location.href='https://shierusha.github.io/create-student/stidcard/shierusha-stu'">創角</button>
       <button onclick="window.open('https://shierusha.github.io/school-battle/students/AllStu', '_blank')">學生名冊</button>
+<button id="toggle-signup"></button>
+
       <button style="background: #999;" onclick="logout()">登出</button>
     </div>
   </div>
@@ -85,5 +87,28 @@ async function sendGachaToken() {
   }
 }
   </script>
+
+<script>
+  const supabase = window.supabase.createClient('https://YOUR-PROJECT.supabase.co','YOUR-ANON-KEY');
+
+  // 需要先讓管理員登入（有 players.role='admin' 或 'superadmin'）
+  async function refreshButton() {
+    const { data, error } = await supabase.rpc('get_signup_enabled');
+    if (error) { console.error(error); alert('讀取註冊狀態失敗'); return; }
+    const enabled = !!data;
+    const btn = document.getElementById('toggle-signup');
+    btn.textContent = enabled ? '目前：開放註冊（點我關閉）' : '目前：關閉註冊（點我開啟）';
+    btn.dataset.enabled = String(enabled);
+  }
+
+  document.getElementById('toggle-signup').addEventListener('click', async () => {
+    const enabled = document.getElementById('toggle-signup').dataset.enabled === 'true';
+    const { error } = await supabase.rpc('set_signup_enabled', { p_enabled: !enabled });
+    if (error) { console.error(error); alert('切換失敗：' + error.message); return; }
+    refreshButton();
+  });
+
+  refreshButton();
+</script>
 </body>
 </html>

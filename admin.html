@@ -4,6 +4,8 @@
   <meta charset="UTF-8">
   <title>謝爾夏｜管理者後台</title>
   <link rel="stylesheet" href="login.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
 </head>
 <body>
   <div class="center">
@@ -19,8 +21,6 @@
       <button style="background: #999;" onclick="logout()">登出</button>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
   // ✅ 用你原本這組 client（不要再創第二個）
   const client = window.supabase.createClient(

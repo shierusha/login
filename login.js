@@ -15,6 +15,8 @@ function transErrorMsg(msg) {
   if (msg.includes('Invalid email or password')) return '帳號或密碼錯誤';
   if (msg.toLowerCase().includes('network')) return '網路連線失敗，請稍後再試';
   if (msg.includes('Email rate limit')) return '請勿頻繁操作，請稍後再試';
+  if (msg.includes('Database error saving new user')) return '請聯繫管理員開啟註冊系統';
+
   return msg;
 }
 

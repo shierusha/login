@@ -11,8 +11,8 @@
   <div class="center">
     <h2 id="admin-welcome">歡迎管理者！</h2>
     <div style="display: flex; flex-direction: column; gap: 1.2em; margin: 2em 0;">
-      <button onclick="location.href='player_manage.html'">玩家／角色管理</button>
-      <button onclick="location.href='skill_admin.html'">技能效果管理</button>
+      <button onclick="location.href='player_manage'">玩家／角色管理</button>
+      <button onclick="location.href='skill_admin'">技能效果管理</button>
       <button onclick="location.href='https://shierusha.github.io/create-student/player_manage'">自家孩兒</button>
       <button onclick="location.href='https://shierusha.github.io/create-student/stidcard/shierusha-stu'">創角</button>
       <button onclick="window.open('https://shierusha.github.io/school-battle/students/AllStu', '_blank')">學生名冊</button>
@@ -31,13 +31,13 @@
   // ===== 登出 =====
   async function logout() {
     await client.auth.signOut();
-    location.href = 'login.html';
+    location.href = 'login';
   }
 
   // ===== 管理員檢查（允許 admin / superadmin）+ 啟用開關按鈕 =====
   async function checkAdminAndInit() {
     const { data: { user } } = await client.auth.getUser();
-    if (!user) return location.href = 'login.html';
+    if (!user) return location.href = 'login';
 
     const { data, error } = await client
       .from('players')
@@ -45,8 +45,8 @@
       .eq('email', user.email)
       .single();
 
-    if (error || !data) return location.href = 'login.html';
-    if (!['admin','superadmin'].includes(data.role)) return location.href = 'login.html';
+    if (error || !data) return location.href = 'login';
+if (data.role !== 'admin') return location.href = 'login';
 
     document.getElementById('admin-welcome').textContent = `歡迎偉大的 ${data.username} 管理者`;
 

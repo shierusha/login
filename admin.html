@@ -22,6 +22,41 @@
 
     </div>
   </div>
+
+
+
+
+
+
+
+
+
+  <button onclick="notifyDiscord()">通知 Discord</button>
+  <div id="result"></div>
+  <script>
+    async function notifyDiscord() {
+      const url = "https://ogzpfrkwnqqaitytncla.supabase.co/functions/v1/notify-discord";
+      const data = {
+        student_name: "測試",
+        title: "謝謝各位的犧牲與奉獻",
+        book_url: "https://shierusha.github.io/create-student/thanks/thanks"
+      };
+      document.getElementById('result').textContent = "送出中...";
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      });
+      const json = await res.json();
+      document.getElementById('result').textContent = JSON.stringify(json, null, 2);
+    }
+  </script>
+
+
+
+
+
+
 <script>
   // ✅ 用你原本這組 client（不要再創第二個）
   const client = window.supabase.createClient(

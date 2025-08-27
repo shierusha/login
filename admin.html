@@ -13,6 +13,8 @@
     <div style="display: flex; flex-direction: column; gap: 1.2em; margin: 2em 0;">
       <button onclick="location.href='player_manage'">玩家／角色管理</button>
       <button onclick="location.href='skill_admin'">技能效果管理</button>
+<button id="go-gacha-btn" onclick="goGacha()">前往扭蛋</button>
+
       <button onclick="location.href='https://shierusha.github.io/create-student/player_manage'">自家孩兒</button>
       <button onclick="location.href='https://shierusha.github.io/create-student/stidcard/shierusha-stu'">創角</button>
       <button onclick="window.open('https://shierusha.github.io/school-battle/students/AllStu', '_blank')">學生名冊</button>
@@ -35,7 +37,6 @@
 
 
 <script>
-  // ✅ 用你原本這組 client（不要再創第二個）
   const client = window.supabase.createClient(
     'https://wfhwhvodgikpducrhgda.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
@@ -109,42 +110,52 @@ if (data.role !== 'admin') return location.href = 'login';
   // 啟動
   checkAdminAndInit();
 </script>
- <script>
 
-async function sendGachaToken() {
-  // 取得使用者 access_token
-  let { data: { session }, error } = await client.auth.getSession();
-  if (error || !session) {
-    alert('尚未登入，請重新登入');
-    return;
+
+
+
+
+
+  <script>
+  const EXCHANGE_URL = 'https://ogzpfrkwnqqaitytncla.supabase.co/functions/v1/exchange-token';
+
+  async function goGacha() {
+    try {
+      const { data: { session } } = await client.auth.getSession();
+      if (!session?.access_token) {
+        alert('請先登入'); return;
+      }
+
+      const resp = await fetch(EXCHANGE_URL, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ token: session.access_token })
+      });
+
+      const j = await resp.json().catch(() => ({}));
+      console.log('[exchange-token] status=', resp.status, j);
+
+      if (!resp.ok) {
+        alert(`交換 Token 失敗（${resp.status}）`);
+        return;
+      }
+      if (!j.token) {
+        alert('交換成功但未回 token，請檢查 Edge Function 是否回傳 { token, sub, exp }');
+        return;
+      }
+
+      localStorage.setItem('gacha_b_jwt', j.token);
+      localStorage.setItem('gacha_b_jwt_exp', String(j.exp || 0));
+      localStorage.setItem('gacha_b_user', j.sub);
+
+      location.href = 'https://shierusha.github.io/library/gacha';
+    } catch (err) {
+      console.error(err);
+      alert('網路或程式錯誤，請再試一次');
+    }
   }
-  let token = session.access_token;
+</script>
 
-  // 這邊你可自訂傳什麼資料，這裡直接只傳 token
-  let payload = {
-    token: token,
-    timestamp: new Date().toISOString()
-  };
-
-  // 使用 fetch 傳送到 gacha supabase 的 table
-  let { error: insertError } = await fetch(`${GACHA_SUPABASE_URL}/rest/v1/gacha_tokens`, {
-    method: "POST",
-    headers: {
-      "apikey": GACHA_SUPABASE_KEY,
-      "Authorization": `Bearer ${GACHA_SUPABASE_KEY}`,
-      "Content-Type": "application/json",
-      "Prefer": "return=minimal"
-    },
-    body: JSON.stringify(payload)
-  }).then(res => res.ok ? null : res.json());
-
-  if (!insertError) {
-    alert('扭蛋TOKEN已送出！（開發中）');
-  } else {
-    alert('送出失敗：' + JSON.stringify(insertError));
-  }
-}
-  </script>
 
 </body>
 </html>

@@ -5,38 +5,131 @@
   <title>謝爾夏｜管理者後台</title>
   <link rel="stylesheet" href="login.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
+  <style>
+    .center {
+      max-width: 430px;
+      margin: 60px auto;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 24px #0002;
+      padding: 32px 20px 28px 20px;
+      text-align: center;
+    }
+    .tab-bar {
+      display: flex;
+      gap: 10px;
+      margin: 18px 0 28px 0;
+      justify-content: center;
+    }
+    .tab-btn {
+      padding: 0.7em 2.2em;
+      border: none;
+      border-radius: 7px 7px 0 0;
+      background: #e9e9e9;
+      cursor: pointer;
+      font-weight: bold;
+      outline: none;
+      letter-spacing: 1px;
+      transition: background 0.2s, color 0.2s;
+      color: #655;
+      font-size: 1.06em;
+    }
+    .tab-btn.active {
+      background: #e3d3d3;
+      color: #651111;
+      box-shadow: 0 2px 12px #bbb7;
+      border-bottom: 2px solid #c0b1b1;
+    }
+    .tab-content {
+      display: none;
+      flex-direction: column;
+      gap: 1.2em;
+      margin: 2em 0 0 0;
+      align-items: center;
+    }
+    .tab-content.active {
+      display: flex;
+    }
+    .center button {
+      padding: 0.8em 0;
+      border-radius: 8px;
+      border: none;
+      background: #bbb;
+      font-size: 1em;
+      cursor: pointer;
+      font-weight: 600;
+      letter-spacing: 1.2px;
+      width: 100%;
+      max-width: 330px;
+      transition: background 0.16s;
+    }
+    .center button:hover {
+      background: #cabbbb;
+    }
+    #toggle-signup {
+      background:#651111;
+      color: #fff;
+      margin-top: 8px;
+    }
+    .logout-btn {
+      background:#999;
+      margin-top:32px;
+    }
+  </style>
 </head>
 <body>
   <div class="center">
     <h2 id="admin-welcome">歡迎管理者！</h2>
-    <div style="display: flex; flex-direction: column; gap: 1.2em; margin: 2em 0;">
+    
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="manage">管理／審核</button>
+      <button class="tab-btn" data-tab="character">角色相關</button>
+      <button class="tab-btn" data-tab="gacha">扭蛋相關</button>
+    </div>
+
+    <!-- Tab1: 管理/審核 -->
+    <div class="tab-content active" id="tab-manage">
       <button onclick="location.href='player_manage'">玩家／角色管理</button>
       <button onclick="location.href='skill_admin'">技能效果管理</button>
-<button id="go-gacha-btn" onclick="goGacha()">前往扭蛋</button>
-
-      <button onclick="location.href='https://shierusha.github.io/create-student/player_manage'">自家孩兒</button>
-      <button onclick="location.href='https://shierusha.github.io/create-student/stidcard/shierusha-stu'">創角</button>
-      <button onclick="window.open('https://shierusha.github.io/school-battle/students/AllStu', '_blank')">學生名冊</button>
-  <button onclick="window.open('https://shierusha.github.io/create-student/thanks/thanks', '_blank')">感謝名冊</button>
-
-
-      <button style="background:#999;" onclick="logout()">登出</button>
-<button style="background:#651111;margin-top: 24px;" id="toggle-signup" disabled>載入註冊狀態中…</button>
-
+      <button id="toggle-signup" disabled>載入註冊狀態中…</button>
     </div>
+
+    <!-- Tab2: 角色相關 -->
+    <div class="tab-content" id="tab-character">
+      <button onclick="location.href='https://shierusha.github.io/create-student/stidcard/shierusha-stu'">創角</button>
+      <button onclick="location.href='https://shierusha.github.io/create-student/player_manage'">自家孩兒</button>
+      <button onclick="window.open('https://shierusha.github.io/school-battle/students/AllStu', '_blank')">名冊</button>
+      <button onclick="window.open('https://shierusha.github.io/create-student/thanks/thanks', '_blank')">感謝名冊</button>
+    </div>
+
+    <!-- Tab3: 扭蛋相關 -->
+    <div class="tab-content" id="tab-gacha">
+      <button id="go-gacha-btn" onclick="goGacha()">前往扭蛋</button>
+      <button onclick="location.href='gacha_admin'">扭蛋管理</button>
+    </div>
+    
+    <button class="logout-btn" onclick="logout()">登出</button>
   </div>
 
-
-
-
-
-
-
-
-
+<script>
+  // Tab 切換
+  document.addEventListener('DOMContentLoaded', function () {
+    const tabs = document.querySelectorAll('.tab-btn');
+    const contents = document.querySelectorAll('.tab-content');
+    tabs.forEach(btn => {
+      btn.onclick = function () {
+        tabs.forEach(b => b.classList.remove('active'));
+        contents.forEach(c => c.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+      }
+    });
+  });
+</script>
 
 <script>
+  // ========== Supabase 初始化 ==========
   const client = window.supabase.createClient(
     'https://wfhwhvodgikpducrhgda.supabase.co',
     'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8'
@@ -45,7 +138,11 @@
   // ===== 登出 =====
   async function logout() {
     await client.auth.signOut();
-    location.href = 'login';
+    localStorage.removeItem('gacha_b_jwt');
+    localStorage.removeItem('gacha_b_jwt_exp');
+    localStorage.removeItem('gacha_b_user');
+    localStorage.removeItem('gacha_player_name');
+    location.href = 'https://shierusha.github.io/login/login';
   }
 
   // ===== 管理員檢查（允許 admin / superadmin）+ 啟用開關按鈕 =====
@@ -60,36 +157,32 @@
       .single();
 
     if (error || !data) return location.href = 'login';
-if (data.role !== 'admin') return location.href = 'login';
+    if (data.role !== 'admin') return location.href = 'login';
 
     document.getElementById('admin-welcome').textContent = `歡迎偉大的 ${data.username} 管理者`;
-
-    // 通過驗證後，才初始化註冊總開關
     initSignupToggle();
   }
 
   // ===== 註冊開關：讀取狀態 + 點擊切換 =====
   async function refreshSignupButton() {
-  const btn = document.getElementById('toggle-signup');
-  btn.disabled = true;
-  btn.textContent = '讀取中…';
+    const btn = document.getElementById('toggle-signup');
+    btn.disabled = true;
+    btn.textContent = '讀取中…';
 
-  const { data, error } = await client.rpc('get_signup_enabled');
-  if (error) {
-    console.error(error);
-    btn.textContent = '讀取失敗（點我重試）';
+    const { data, error } = await client.rpc('get_signup_enabled');
+    if (error) {
+      console.error(error);
+      btn.textContent = '讀取失敗（點我重試）';
+      btn.disabled = false;
+      btn.onclick = () => refreshSignupButton();
+      return;
+    }
+
+    const enabled = Boolean(data);
+    btn.dataset.enabled = String(enabled);
+    btn.textContent = enabled ? '目前：開放註冊（點我關閉）' : '目前：關閉註冊（點我開啟）';
     btn.disabled = false;
-    // 讓使用者可以點按鈕重試
-    btn.onclick = () => refreshSignupButton();
-    return;
   }
-
-  const enabled = Boolean(data);
-  btn.dataset.enabled = String(enabled);
-  btn.textContent = enabled ? '目前：開放註冊（點我關閉）' : '目前：關閉註冊（點我開啟）';
-  btn.disabled = false;
-}
-
 
   function initSignupToggle() {
     const btn = document.getElementById('toggle-signup');
@@ -107,17 +200,10 @@ if (data.role !== 'admin') return location.href = 'login';
     refreshSignupButton();
   }
 
-  // 啟動
+  // ===== 啟動 =====
   checkAdminAndInit();
-</script>
 
-
-
-
-
-
-
-<script>
+  // ====== 扭蛋跨專案登入 ======
   const EXCHANGE_URL = 'https://ogzpfrkwnqqaitytncla.supabase.co/functions/v1/exchange-token';
 
   async function goGacha() {
@@ -126,7 +212,6 @@ if (data.role !== 'admin') return location.href = 'login';
     if (!session?.access_token) { alert('請先登入'); return; }
 
     // 2) 準備顯示用名稱（只存在 localStorage）
-    //   優先 players.username，否則 email 前綴，再不行用「玩家」
     let username = '玩家';
     try {
       const { data: me } = await client
@@ -154,31 +239,16 @@ if (data.role !== 'admin') return location.href = 'login';
       alert('交換 Token 失敗'); return;
     }
 
-    // 4) 只存前端資料（名字存在 localStorage，不寫入 B 資料庫）
+    // 4) 只存前端資料
     localStorage.setItem('gacha_b_jwt', data.token);
     localStorage.setItem('gacha_b_jwt_exp', String(data.exp || 0));
     localStorage.setItem('gacha_b_user', data.sub || '');
-    localStorage.setItem('gacha_player_name', username);  // ★ 只靠這個顯示名字
-localStorage.setItem('gacha_app_role', data.role || 'PLAYER');
-
+    localStorage.setItem('gacha_player_name', username);
+    localStorage.setItem('gacha_app_role', data.role || 'PLAYER');
 
     // 5) 進扭蛋頁
     location.href = 'https://shierusha.github.io/library/gacha';
   }
-
-  // 登出時也把扭蛋用的暱稱清掉，避免換帳殘留
-  async function logout() {
-    await client.auth.signOut();
-    localStorage.removeItem('gacha_b_jwt');
-    localStorage.removeItem('gacha_b_jwt_exp');
-    localStorage.removeItem('gacha_b_user');
-    localStorage.removeItem('gacha_player_name');
-    location.href = 'https://shierusha.github.io/login/login';
-  }
 </script>
-
-
-
-
 </body>
 </html>

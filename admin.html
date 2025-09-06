@@ -90,7 +90,7 @@
     <!-- Tab3: 扭蛋相關 -->
     <div class="tab-content" id="tab-gacha">
       <button id="go-gacha-btn" onclick="goGacha()">前往扭蛋</button>
-      <button onclick="location.href='gacha_admin'">扭蛋管理</button>
+<button id="go-gacha-admin-btn" onclick="goGachaAdmin()">扭蛋管理</button>
     </div>
     
     <button class="logout-btn" onclick="logout()">登出</button>
@@ -126,6 +126,7 @@
     localStorage.removeItem('gacha_b_jwt_exp');
     localStorage.removeItem('gacha_b_user');
     localStorage.removeItem('gacha_player_name');
+    localStorage.removeItem('gacha_app_role');
     location.href = 'https://shierusha.github.io/login/login';
   }
 
@@ -187,15 +188,15 @@
   // ===== 啟動 =====
   checkAdminAndInit();
 
-  // ====== 扭蛋跨專案登入 ======
+  // ====== 扭蛋跨專案登入（共用） ======
   const EXCHANGE_URL = 'https://ogzpfrkwnqqaitytncla.supabase.co/functions/v1/exchange-token';
 
-  async function goGacha() {
+  async function exchangeForGachaIfNeeded() {
     // 1) A 專案 Session
     const { data: { session } } = await client.auth.getSession();
-    if (!session?.access_token) { alert('請先登入'); return; }
+    if (!session?.access_token) { alert('請先登入'); throw new Error('no A session'); }
 
-    // 2) 準備顯示用名稱（只存在 localStorage）
+    // 2) 顯示名稱（username > email 前半）
     let username = '玩家';
     try {
       const { data: me } = await client
@@ -203,7 +204,6 @@
         .select('username, email')
         .eq('email', session.user.email)
         .single();
-
       if (me?.username && me.username.trim()) {
         username = me.username.trim();
       } else if (me?.email) {
@@ -211,28 +211,48 @@
       }
     } catch (_) {}
 
-    // 3) 用 A 的 access_token 向 B 的 exchange-token 換短期 JWT
-    const resp = await fetch(EXCHANGE_URL, {
-      method: 'POST',
-      headers: { 'content-type':'application/json' },
-      body: JSON.stringify({ token: session.access_token })
-    });
-    const data = await resp.json();
-    if (!resp.ok || !data?.token) {
-      console.error('exchange-token failed:', data);
-      alert('交換 Token 失敗'); return;
+    // 3) 若已有未過期 B 簽，略過重換（留 5 分鐘緩衝）
+    const now = Math.floor(Date.now() / 1000);
+    const exp = Number(localStorage.getItem('gacha_b_jwt_exp') || 0);
+    const hasFresh = localStorage.getItem('gacha_b_jwt') && exp && (exp - now > 300);
+
+    if (!hasFresh) {
+      const r = await fetch(EXCHANGE_URL, {
+        method: 'POST',
+        headers: { 'content-type':'application/json' },
+        body: JSON.stringify({ token: session.access_token })
+      });
+      const x = await r.json();
+      if (!r.ok || !x?.token) {
+        console.error('exchange-token failed:', x);
+        alert('交換 Token 失敗'); throw new Error('exchange failed');
+      }
+      localStorage.setItem('gacha_b_jwt', x.token);
+      localStorage.setItem('gacha_b_jwt_exp', String(x.exp || 0));
+      localStorage.setItem('gacha_b_user', x.sub || '');
+      localStorage.setItem('gacha_app_role', x.role || 'PLAYER');
     }
 
-    // 4) 只存前端資料
-    localStorage.setItem('gacha_b_jwt', data.token);
-    localStorage.setItem('gacha_b_jwt_exp', String(data.exp || 0));
-    localStorage.setItem('gacha_b_user', data.sub || '');
+    // 4) 不論是否重換，都更新顯示名稱
     localStorage.setItem('gacha_player_name', username);
-    localStorage.setItem('gacha_app_role', data.role || 'PLAYER');
+  }
 
-    // 5) 進扭蛋頁
-    location.href = 'https://shierusha.github.io/library/gacha';
+  // 原本：前往扭蛋（保留；管理員也能抽）
+  async function goGacha() {
+    try {
+      await exchangeForGachaIfNeeded();
+      location.href = 'https://shierusha.github.io/library/gacha';
+    } catch (e) { /* 已 alert */ }
+  }
+
+  // 新增：前往扭蛋管理（會帶著 localStorage 過去）
+  async function goGachaAdmin() {
+    try {
+      await exchangeForGachaIfNeeded();
+      location.href = 'https://shierusha.github.io/library/lib/gachaUD';
+    } catch (e) { /* 已 alert */ }
   }
 </script>
+
 </body>
 </html>

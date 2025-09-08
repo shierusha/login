@@ -90,7 +90,9 @@
     <!-- Tab3: 扭蛋相關 -->
     <div class="tab-content" id="tab-gacha">
       <button id="go-gacha-btn" onclick="goGacha()">前往扭蛋</button>
-<button id="go-gacha-admin-btn" onclick="goGachaAdmin()">扭蛋管理</button>
+      <button id="go-gacha-admin-btn" onclick="goGachaAdmin()">扭蛋管理</button>
+      <!-- ★ 新增這顆：抽數管理（連到 /library/lib/gacha） -->
+      <button id="go-gacha-grant-btn" onclick="goGachaGrant()">抽數管理</button>
     </div>
     
     <button class="logout-btn" onclick="logout()">登出</button>
@@ -230,7 +232,7 @@
       localStorage.setItem('gacha_b_jwt', x.token);
       localStorage.setItem('gacha_b_jwt_exp', String(x.exp || 0));
       localStorage.setItem('gacha_b_user', x.sub || '');
-      localStorage.setItem('gacha_app_role', x.role || 'PLAYER');
+      localStorage.setItem('gacha_app_role', x.role || 'PLAYER'); // 若有帶 ADMIN 會覆蓋
     }
 
     // 4) 不論是否重換，都更新顯示名稱
@@ -245,11 +247,19 @@
     } catch (e) { /* 已 alert */ }
   }
 
-  // 新增：前往扭蛋管理（會帶著 localStorage 過去）
+  // 既有：扭蛋管理（卡池/活動）
   async function goGachaAdmin() {
     try {
       await exchangeForGachaIfNeeded();
       location.href = 'https://shierusha.github.io/library/lib/gachaUD';
+    } catch (e) { /* 已 alert */ }
+  }
+
+  // ★ 新增：抽數管理（抽數贈送 / 舊饅頭回流）
+  async function goGachaGrant() {
+    try {
+      await exchangeForGachaIfNeeded();
+      location.href = 'https://shierusha.github.io/library/lib/gacha';
     } catch (e) { /* 已 alert */ }
   }
 </script>

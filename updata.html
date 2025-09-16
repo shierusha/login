@@ -92,7 +92,7 @@ function renderList(){
         <input type="checkbox" ${n.is_public?'checked':''} />
         顯示
       </label>
-      <textarea maxlength="80" placeholder="請輸入角色設定／裡設定">${escapeHTML(n.content||'')}</textarea>
+      <textarea placeholder="請輸入角色設定／裡設定">${escapeHTML(n.content||'')}</textarea>
       <button type="button" class="del">刪除</button>
     `;
     const cb = row.querySelector('input[type="checkbox"]');

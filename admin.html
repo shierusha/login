@@ -69,7 +69,7 @@
     <div class="tab-bar">
       <button class="tab-btn active" data-tab="manage">管理／審核</button>
       <button class="tab-btn" data-tab="character">角色相關</button>
-      <button class="tab-btn" data-tab="gacha">扭蛋相關</button>
+      <button class="tab-btn" data-tab="gacha">扭蛋/休息室</button>
     </div>
 
     <!-- Tab1: 管理/審核 -->
@@ -81,8 +81,7 @@
 
     <!-- Tab2: 角色相關 -->
     <div class="tab-content" id="tab-character">
-                  <button onclick="location.href='https://shierusha.github.io/library/story/story'">前往休息室</button>
-
+      <button onclick="window.open('https://shierusha.github.io/library/story/story','_blank')">前往休息室</button>
       <button onclick="location.href='https://shierusha.github.io/create-student/stidcard/shierusha-stu'">創角</button>
       <button onclick="location.href='https://shierusha.github.io/create-student/player_manage'">自家孩兒</button>
       <button onclick="window.open('https://shierusha.github.io/school-battle/students/AllStu', '_blank')">學生名冊</button>
@@ -91,6 +90,7 @@
 
     <!-- Tab3: 扭蛋相關 -->
     <div class="tab-content" id="tab-gacha">
+            <button onclick="window.open('https://shierusha.github.io/library/story/story','_blank')">前往休息室</button>
       <button id="go-gacha-btn" onclick="goGacha()">前往扭蛋</button>
       <button id="go-gacha-admin-btn" onclick="goGachaAdmin()">扭蛋管理</button>
       <!-- ★ 新增這顆：抽數管理（連到 /library/lib/gacha） -->

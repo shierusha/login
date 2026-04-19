@@ -112,26 +112,32 @@
   }
   // ======== 搜尋欄位設定，每個 Tab 對應 ========
   const SEARCH_FIELDS = {
-    skill: [
-      { key: "effect_name", name: "名稱" },
-      { key: "description", name: "描述" },
-      { key: "effect_type", name: "職業類型" }, // 新增：支援職業類型搜尋
-      { key: "effect_id_code", name: "顯示代碼" },
-      { key: "effect_code", name: "程式邏輯碼" }
-    ],
-    move: [
-      { key: "move_name", name: "名稱" },
-      { key: "description", name: "描述" },
-      { key: "effect_id_code", name: "顯示代碼" },
-      { key: "effect_code", name: "程式邏輯碼" }
-    ],
-    debuff: [
-      { key: "debuff_name", name: "名稱" },
-      { key: "description", name: "描述" },
-      { key: "effect_id_code", name: "顯示代碼" },
-      { key: "effect_code", name: "程式邏輯碼" }
-    ]
-  };
+  skill: [
+    { key: "effect_name", name: "名稱" },
+    { key: "description", name: "描述" },
+    { key: "effect_type", name: "職業類型" },
+    { key: "effect_id_code", name: "顯示代碼" },
+    { key: "effect_code", name: "程式邏輯碼" }
+  ],
+  move: [
+    { key: "move_name", name: "名稱" },
+    { key: "description", name: "描述" },
+    { key: "effect_id_code", name: "顯示代碼" },
+    { key: "effect_code", name: "程式邏輯碼" }
+  ],
+  debuff: [
+    { key: "debuff_name", name: "名稱" },
+    { key: "description", name: "描述" },
+    { key: "effect_id_code", name: "顯示代碼" },
+    { key: "effect_code", name: "程式邏輯碼" }
+  ],
+  npc_skill: [
+    { key: "effect_name", name: "名稱" },
+    { key: "description", name: "描述" },
+    { key: "effect_id_code", name: "顯示代碼" },
+    { key: "effect_code", name: "程式邏輯碼" }
+  ]
+};
 
   // ===== 新增 type 中英對照表 =====
   const EFFECT_TYPE_MAP = {
@@ -190,18 +196,6 @@
       { key: "max_targets", name: "人數", type: "number", required: true, min: 1, max: 5 },
       { key: "score", name: "分數", type: "number", required: true },
       { key: "extra_cd", name: "cd ", type: "number", required: false },
-      { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
-      { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
-    ]
-  },
-
-  npc_skill: {
-    label: "NPC技能",
-    table: "npc_skill_effects",
-    pk: "effect_id",
-    fields: [
-      { key: "effect_name", name: "名稱", type: "text", required: true },
-      { key: "description", name: "描述", type: "text", required: true },
       { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
       { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
     ]
@@ -272,6 +266,18 @@
         ]
       },
       { key: "offset_score", name: "抵銷分數", type: "number", required: true },
+      { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
+      { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
+    ]
+  },
+
+  npc_skill: {
+    label: "NPC技能",
+    table: "npc_skill_effects",
+    pk: "effect_id",
+    fields: [
+      { key: "effect_name", name: "名稱", type: "text", required: true },
+      { key: "description", name: "描述", type: "text", required: true },
       { key: "effect_id_code", name: "顯示代碼", type: "text", required: false },
       { key: "effect_code", name: "程式邏輯碼", type: "text", required: false }
     ]

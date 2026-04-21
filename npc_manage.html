@@ -392,7 +392,7 @@
       <div class="search-row">
         <input id="search-input" type="text" placeholder="搜尋 NPC 名字、歸屬、陣營">
       </div>
-      <button class="reload-btn" type="button" id="reload-btn">重新載入</button>
+      <button class="reload-btn" type="button" id="npc-list-btn">NPC一覽表</button>
       <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
     </div>
 
@@ -435,6 +435,9 @@
     const NPC_EDIT_BASE_URL = 'https://shierusha.github.io/create-npc/index.html';
     const LOGIN_URL = 'https://shierusha.github.io/login/login';
     const STORAGE_BUCKET = 'student-img';
+    const LEAF_PLAYER_ID = '8aea3076-294c-41f6-bb38-0a99da77c098';
+    const NPC_LIST_URL = 'https://shierusha.github.io/library/lib/allnpc';
+    const LEAF_NPC_LIST_URL = 'https://shierusha.github.io/library/lib/allnpc?playid=0513';
 
     const BASE_HIDDEN_NPC_CATEGORIES = [
       '內部測試'
@@ -565,6 +568,39 @@
 
     function hasHiddenPermission() {
       return HIDDEN_PERMISSION_PLAYER_IDS.includes(currentPlayerId);
+    }
+
+    function isLeafPlayer() {
+      return currentPlayerId === LEAF_PLAYER_ID;
+    }
+
+    function getNpcListButtonConfig() {
+      if (isLeafPlayer()) {
+        return {
+          text: '孩子名冊',
+          url: LEAF_NPC_LIST_URL
+        };
+      }
+
+      return {
+        text: 'NPC一覽表',
+        url: NPC_LIST_URL
+      };
+    }
+
+    function setupNpcListButton() {
+      const button = document.getElementById('npc-list-btn');
+
+      if (!button) {
+        return;
+      }
+
+      const config = getNpcListButtonConfig();
+
+      button.textContent = config.text;
+      button.onclick = function () {
+        window.open(config.url, '_blank', 'noopener,noreferrer');
+      };
     }
 
     function canOperateNpc(npc) {
@@ -1431,7 +1467,6 @@
 
     function bindPageEvents() {
       const searchInput = document.getElementById('search-input');
-      const reloadButton = document.getElementById('reload-btn');
       const closeButton = document.getElementById('image-upload-close-btn');
       const cancelButton = document.getElementById('image-cancel-btn');
       const mirrorButton = document.getElementById('image-mirror-btn');
@@ -1440,10 +1475,6 @@
 
       if (searchInput) {
         searchInput.addEventListener('input', applySearch);
-      }
-
-      if (reloadButton) {
-        reloadButton.addEventListener('click', loadNpcRows);
       }
 
       if (closeButton) {
@@ -1481,6 +1512,7 @@
         return;
       }
 
+      setupNpcListButton();
       await loadNpcRows();
     });
 

@@ -436,9 +436,21 @@
     const LOGIN_URL = 'https://shierusha.github.io/login/login';
     const STORAGE_BUCKET = 'student-img';
 
+    const HIDDEN_NPC_CATEGORIES = [
+      '內部測試',
+      '喵喵喵'
+    ];
+
     const FULL_PERMISSION_PLAYER_IDS = [
-      '32d2c681-43f4-4f24-8014-44cdbe80411d',
+      '32d2c681-43f4-4f24-8014-44cdbe80411d'
+    ];
+
+    const PUBLIC_PERMISSION_PLAYER_IDS = [
       '9eee80cf-baf2-4297-b163-59699bad4ed4'
+    ];
+
+    const HIDDEN_PERMISSION_PLAYER_IDS = [
+      '8aea3076-294c-41f6-bb38-0a99da77c098'
     ];
 
     const ALIGNMENT_LABELS = {
@@ -516,16 +528,63 @@
       return text || '未分類';
     }
 
+    function isHiddenNpcCategory(value) {
+      const category = getCategoryText(value);
+      return HIDDEN_NPC_CATEGORIES.includes(category);
+    }
+
+    function hasFullPermission() {
+      return FULL_PERMISSION_PLAYER_IDS.includes(currentPlayerId);
+    }
+
+    function hasPublicPermission() {
+      return PUBLIC_PERMISSION_PLAYER_IDS.includes(currentPlayerId);
+    }
+
+    function hasHiddenPermission() {
+      return HIDDEN_PERMISSION_PLAYER_IDS.includes(currentPlayerId);
+    }
+
     function canOperateNpc(npc) {
-      if (!currentPlayerId) {
+      if (!currentPlayerId || !npc) {
         return false;
       }
 
-      if (FULL_PERMISSION_PLAYER_IDS.includes(currentPlayerId)) {
+      if (hasFullPermission()) {
         return true;
       }
 
-      return npc && npc.player_id === currentPlayerId;
+      if (hasPublicPermission()) {
+        return !isHiddenNpcCategory(npc.npc_category);
+      }
+
+      if (hasHiddenPermission()) {
+        return isHiddenNpcCategory(npc.npc_category);
+      }
+
+      if (isHiddenNpcCategory(npc.npc_category)) {
+        return false;
+      }
+
+      return npc.player_id === currentPlayerId;
+    }
+
+    function getVisibleNpcRows(rows) {
+      const safeRows = Array.isArray(rows) ? rows : [];
+
+      if (hasFullPermission()) {
+        return safeRows.slice();
+      }
+
+      if (hasPublicPermission()) {
+        return safeRows.filter(npc => !isHiddenNpcCategory(npc.npc_category));
+      }
+
+      if (hasHiddenPermission()) {
+        return safeRows.filter(npc => isHiddenNpcCategory(npc.npc_category));
+      }
+
+      return safeRows.filter(npc => !isHiddenNpcCategory(npc.npc_category));
     }
 
     function compareNpcRows(a, b) {
@@ -650,7 +709,13 @@
         return false;
       }
 
-      if (playerData.role !== 'admin') {
+      const canEnterNpcManagePage =
+        playerData.role === 'admin' ||
+        FULL_PERMISSION_PLAYER_IDS.includes(playerData.player_id) ||
+        PUBLIC_PERMISSION_PLAYER_IDS.includes(playerData.player_id) ||
+        HIDDEN_PERMISSION_PLAYER_IDS.includes(playerData.player_id);
+
+      if (!canEnterNpcManagePage) {
         alert('你不是管理員，無權進入 NPC 管理頁面');
         window.location.href = LOGIN_URL;
         return false;
@@ -692,14 +757,15 @@
     function applySearch() {
       const input = document.getElementById('search-input');
       const keyword = input ? input.value.trim().toLowerCase() : '';
+      const visibleRows = getVisibleNpcRows(npcRows);
 
       if (!keyword) {
-        filteredNpcRows = npcRows.slice();
+        filteredNpcRows = visibleRows.slice();
         renderNpcSections();
         return;
       }
 
-      filteredNpcRows = npcRows.filter(npc => {
+      filteredNpcRows = visibleRows.filter(npc => {
         const name = String(npc.name || '').toLowerCase();
         const category = String(npc.npc_category || '').toLowerCase();
         const alignment = getAlignmentText(npc.alignment).toLowerCase();
@@ -846,75 +912,80 @@
     }
 
     function openNpcEdit(npc) {
-  if (!npc || !npc.othernpc_id) {
-    return;
-  }
+      if (!npc || !npc.othernpc_id) {
+        return;
+      }
 
-  window.open(
-    `${NPC_EDIT_BASE_URL}?othernpc_id=${encodeURIComponent(npc.othernpc_id)}`,
-    '_blank',
-    'noopener,noreferrer'
-  );
-}
+      if (!canOperateNpc(npc)) {
+        alert('你沒有權限修改這個 NPC');
+        return;
+      }
 
-   async function toggleNpcNotes(npc) {
-  if (!npc || !npc.othernpc_id) {
-    return;
-  }
+      window.open(
+        `${NPC_EDIT_BASE_URL}?othernpc_id=${encodeURIComponent(npc.othernpc_id)}`,
+        '_blank',
+        'noopener,noreferrer'
+      );
+    }
 
-  if (!canOperateNpc(npc)) {
-    alert('你沒有權限查看或修改這個 NPC 的設定');
-    return;
-  }
+    async function toggleNpcNotes(npc) {
+      if (!npc || !npc.othernpc_id) {
+        return;
+      }
 
-  if (openNoteRowId === npc.othernpc_id) {
-    openNoteRowId = '';
-    openNoteHtml = '';
-    renderNpcSections();
-    return;
-  }
+      if (!canOperateNpc(npc)) {
+        alert('你沒有權限查看或修改這個 NPC 的設定');
+        return;
+      }
 
-  openNoteRowId = npc.othernpc_id;
-  openNoteHtml = '<span class="empty-text">讀取中...</span>';
-  renderNpcSections();
+      if (openNoteRowId === npc.othernpc_id) {
+        openNoteRowId = '';
+        openNoteHtml = '';
+        renderNpcSections();
+        return;
+      }
 
-  const { data, error } = await client
-    .from('othernpc_notes')
-    .select('content,is_public,sort_order')
-    .eq('othernpc_id', npc.othernpc_id)
-    .order('sort_order', { ascending: true });
+      openNoteRowId = npc.othernpc_id;
+      openNoteHtml = '<span class="empty-text">讀取中...</span>';
+      renderNpcSections();
 
-  if (error) {
-    openNoteHtml = `<span style="color:#d44;">讀取設定失敗：${escapeHTML(error.message)}</span>`;
-    renderNpcSections();
-    return;
-  }
+      const { data, error } = await client
+        .from('othernpc_notes')
+        .select('content,is_public,sort_order')
+        .eq('othernpc_id', npc.othernpc_id)
+        .order('sort_order', { ascending: true });
 
-  const notes = data || [];
-  const updateUrl = `npcupdata?othernpc_id=${encodeURIComponent(npc.othernpc_id)}`;
+      if (error) {
+        openNoteHtml = `<span style="color:#d44;">讀取設定失敗：${escapeHTML(error.message)}</span>`;
+        renderNpcSections();
+        return;
+      }
 
-  const noteListHtml = notes.length
-    ? `
-      <ul>
-        ${
-          notes.map(note => {
-            const prefix = note.is_public ? '# ' : '? ';
-            return `<li>${prefix}${escapeHTML(note.content)}</li>`;
-          }).join('')
-        }
-      </ul>
-    `
-    : '<span class="empty-text">（無）</span>';
+      const notes = data || [];
+      const updateUrl = `npcupdata?othernpc_id=${encodeURIComponent(npc.othernpc_id)}`;
 
-  openNoteHtml = `
-    ${noteListHtml}
-    <div style="margin-top:1.1em;">
-      <button class="btn btn-edit" type="button" onclick="location.href='${updateUrl}'">更新</button>
-    </div>
-  `;
+      const noteListHtml = notes.length
+        ? `
+          <ul>
+            ${
+              notes.map(note => {
+                const prefix = note.is_public ? '# ' : '? ';
+                return `<li>${prefix}${escapeHTML(note.content)}</li>`;
+              }).join('')
+            }
+          </ul>
+        `
+        : '<span class="empty-text">（無）</span>';
 
-  renderNpcSections();
-}
+      openNoteHtml = `
+        ${noteListHtml}
+        <div style="margin-top:1.1em;">
+          <button class="btn btn-edit" type="button" onclick="location.href='${updateUrl}'">更新</button>
+        </div>
+      `;
+
+      renderNpcSections();
+    }
 
     function resetUploadState() {
       uploadImage = null;

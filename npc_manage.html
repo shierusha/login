@@ -1,0 +1,1393 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>謝爾夏｜NPC管理頁面</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --main-blue: #143158;
+      --soft-blue: #1d4076;
+      --light-blue: #eef2fa;
+      --white: #ffffff;
+      --bg: #f4f7fa;
+      --danger: #f66464;
+      --green: #4e892a;
+      --yellow: #ffc940;
+      --shadow: 0 2px 16px #0001;
+      --radius: 1.3rem;
+    }
+
+    body {
+      font-family: "Noto Sans TC", sans-serif;
+      background: var(--bg);
+      color: var(--main-blue);
+      margin: 0;
+      padding: 2rem;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: auto;
+      background: var(--white);
+      padding: 2rem;
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    h2 {
+      text-align: center;
+      margin: 0 0 1.3rem;
+      letter-spacing: 0.05em;
+    }
+
+    h3 {
+      margin: 0 0 0.8rem;
+      color: #3d648d;
+      letter-spacing: 0.04em;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+
+    .search-row {
+      display: flex;
+      gap: 0.8rem;
+      align-items: center;
+      flex: 1;
+      min-width: 260px;
+    }
+
+    .search-row input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 0.55rem 0.85rem;
+      border-radius: 0.7rem;
+      border: 1px solid #c8d2e0;
+      font-size: 1rem;
+      font-family: "Noto Sans TC", sans-serif;
+      background: #fbfcff;
+      color: var(--main-blue);
+    }
+
+    .msg {
+      min-height: 1.5em;
+      margin-bottom: 1rem;
+      color: #1767a0;
+      font-weight: 700;
+    }
+
+    .return-btn,
+    .reload-btn,
+    .btn {
+      background: #1767a0;
+      color: #fff;
+      border: none;
+      border-radius: 0.55em;
+      padding: 0.36em 0.85em;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: "Noto Sans TC", sans-serif;
+      white-space: nowrap;
+      transition: filter 0.18s, transform 0.18s;
+    }
+
+    .return-btn,
+    .reload-btn {
+      background: var(--light-blue);
+      color: var(--main-blue);
+      border-radius: 2em;
+      padding: 0.65em 1.5em;
+      font-size: 1rem;
+    }
+
+    .return-btn:hover,
+    .reload-btn:hover,
+    .btn:hover {
+      filter: brightness(0.94);
+    }
+
+    .btn:active,
+    .return-btn:active,
+    .reload-btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-card {
+      background: #3d648d;
+    }
+
+    .btn-note {
+      background: var(--yellow);
+      color: #333;
+    }
+
+    .btn-front {
+      background: #7a5dc7;
+    }
+
+    .btn-back {
+      background: #4c7b9d;
+    }
+
+    .btn-edit {
+      background: var(--green);
+    }
+
+    .btn-close {
+      background: #8b96a8;
+    }
+
+    .npc-section {
+      margin-top: 1.5rem;
+      padding-top: 0.5rem;
+    }
+
+    .table-wrap {
+      overflow-x: auto;
+      border-radius: 0.9rem;
+      border: 1px solid #eef2fa;
+      background: #fff;
+      margin-bottom: 1.2rem;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 680px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid #eef2fa;
+      padding: 0.58em 0.72em;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    th {
+      background: #f4f7fa;
+      font-size: 1rem;
+      color: #1d4076;
+      font-weight: 800;
+    }
+
+    tr:last-child td {
+      border-bottom: none;
+    }
+
+    .npc-name {
+      font-weight: 800;
+      letter-spacing: 0.03em;
+    }
+
+    .alignment-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 2.5em;
+      border-radius: 999px;
+      padding: 0.18em 0.7em;
+      background: #eef2fa;
+      color: #1d4076;
+      font-weight: 800;
+    }
+
+    .alignment-white {
+      background: #edf7ff;
+      color: #1767a0;
+    }
+
+    .alignment-black {
+      background: #2c3140;
+      color: #fff;
+    }
+
+    .alignment-unknown {
+      background: #fff1d6;
+      color: #a06400;
+    }
+
+    .action-cell {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.35rem;
+    }
+
+    .expand-row {
+      background: #f7f9fd;
+    }
+
+    .note-box {
+      padding: 1rem 1.2rem;
+      background: #f4f7fa;
+      border-radius: 0.8rem;
+      line-height: 1.7;
+      white-space: pre-line;
+    }
+
+    .note-box ul {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+
+    .note-box li {
+      margin: 0.35em 0;
+    }
+
+    .empty-text {
+      color: #7a8598;
+      font-style: italic;
+    }
+
+    .modal-bg {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.28);
+      z-index: 1001;
+      justify-content: center;
+      align-items: center;
+      padding: 1rem;
+      box-sizing: border-box;
+    }
+
+    .modal {
+      background: #fff;
+      border-radius: 1em;
+      width: min(96vw, 520px);
+      padding: 1.5rem;
+      box-shadow: 0 4px 24px #0004;
+      position: relative;
+      box-sizing: border-box;
+    }
+
+    .modal h3 {
+      margin: 0 2.4rem 1rem 0;
+      color: var(--main-blue);
+    }
+
+    .close-btn {
+      position: absolute;
+      top: 0.7rem;
+      right: 0.9rem;
+      background: none;
+      border: none;
+      color: #999;
+      font-size: 1.6rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    .canvas-wrap {
+      position: relative;
+      width: 100%;
+      max-width: 400px;
+      aspect-ratio: 8 / 9;
+      margin: 0 auto 0.8rem;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #image-edit-canvas {
+      width: 100%;
+      height: 100%;
+      max-width: 400px;
+      max-height: 450px;
+      display: block;
+      background: #ddd;
+      border-radius: 0.7em;
+      touch-action: none;
+    }
+
+    #image-redbox-frame {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      max-width: 400px;
+      max-height: 450px;
+      pointer-events: none;
+      z-index: 10;
+      object-fit: contain;
+    }
+
+    .file-input {
+      margin: 0.6rem 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+
+    .modal-actions {
+      display: flex;
+      gap: 0.6rem;
+      flex-wrap: wrap;
+      margin-top: 0.7rem;
+    }
+
+    .modal-msg {
+      min-height: 1.5em;
+      color: #1767a0;
+      margin-top: 0.7rem;
+      font-weight: 700;
+    }
+
+    .hint {
+      font-size: 0.92rem;
+      color: #777;
+      line-height: 1.6;
+      margin-top: 0.6rem;
+    }
+
+    @media (max-width: 700px) {
+      body {
+        padding: 1rem;
+      }
+
+      .container {
+        padding: 1.2rem;
+      }
+
+      .top-row {
+        align-items: stretch;
+      }
+
+      .search-row {
+        min-width: 100%;
+      }
+
+      .return-btn,
+      .reload-btn {
+        width: 100%;
+      }
+
+      th,
+      td {
+        font-size: 0.95rem;
+      }
+
+      .modal {
+        padding: 1.2rem;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>謝爾夏 NPC 管理頁面</h2>
+
+    <div class="top-row">
+      <div class="search-row">
+        <input id="search-input" type="text" placeholder="搜尋 NPC 名字、歸屬、陣營">
+      </div>
+      <button class="reload-btn" type="button" id="reload-btn">重新載入</button>
+      <button class="return-btn" type="button" onclick="location.href='admin.html'">返回管理者首頁</button>
+    </div>
+
+    <div class="msg" id="msg"></div>
+
+    <div id="npc-sections"></div>
+  </div>
+
+  <div class="modal-bg" id="image-upload-modal-bg">
+    <div class="modal">
+      <button class="close-btn" type="button" id="image-upload-close-btn">×</button>
+      <h3 id="image-upload-title">上傳照片</h3>
+
+      <div class="canvas-wrap">
+        <canvas id="image-edit-canvas" width="400" height="450"></canvas>
+        <img src="https://shierusha.github.io/create-student/imgs/export-0.png" id="image-redbox-frame" alt="紅框定位圖">
+      </div>
+
+      <input class="file-input" type="file" id="image-upload-file" accept="image/*">
+
+      <div class="modal-actions">
+        <button type="button" class="btn" id="image-mirror-btn">鏡射</button>
+        <button type="button" class="btn btn-edit" id="image-submit-btn">儲存上傳</button>
+        <button type="button" class="btn btn-close" id="image-cancel-btn">取消</button>
+      </div>
+
+      <div class="modal-msg" id="image-upload-msg"></div>
+
+      <div class="hint">
+        電腦：A/D 旋轉、拖移、滾輪縮放；手機：雙指縮放/旋轉，單指拖移
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://wfhwhvodgikpducrhgda.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndmaHdodm9kZ2lrcGR1Y3JoZ2RhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDgwMTAwNjEsImV4cCI6MjA2MzU4NjA2MX0.P6P-x4SxjiR4VdWH6VFgY_ktgMac_OzuI4Bl7HWskz8';
+
+    const NPC_CARD_BASE_URL = 'https://shierusha.github.io/school-battle/NPC/npc-idcard';
+    const NPC_EDIT_BASE_URL = 'https://shierusha.github.io/create-npc/index.html';
+    const LOGIN_URL = 'https://shierusha.github.io/login/login';
+    const STORAGE_BUCKET = 'student-img';
+
+    const FULL_PERMISSION_PLAYER_IDS = [
+      '32d2c681-43f4-4f24-8014-44cdbe80411d',
+      '9eee80cf-baf2-4297-b163-59699bad4ed4'
+    ];
+
+    const ALIGNMENT_LABELS = {
+      white: '白',
+      black: '黑'
+    };
+
+    const ALIGNMENT_SORT_ORDER = {
+      white: 1,
+      black: 2
+    };
+
+    const client = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let currentPlayerId = '';
+    let currentPlayerRole = '';
+    let npcRows = [];
+    let filteredNpcRows = [];
+    let openNoteRowId = '';
+    let openNoteHtml = '';
+    let uploadNpc = null;
+    let uploadImageType = '';
+    let uploadImage = null;
+    let uploadCanvas = null;
+    let uploadCtx = null;
+    let uploadImageX = 200;
+    let uploadImageY = 225;
+    let uploadScale = 1;
+    let uploadRotation = 0;
+    let uploadMirrored = false;
+    let uploadDragging = false;
+    let uploadLastX = 0;
+    let uploadLastY = 0;
+    let uploadPinchStart = null;
+    let uploadPinchInit = {};
+
+    function escapeHTML(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function setMsg(text, isError) {
+      const msg = document.getElementById('msg');
+
+      if (!msg) {
+        return;
+      }
+
+      msg.style.color = isError ? '#d44' : '#1767a0';
+      msg.textContent = text || '';
+    }
+
+    function getAlignmentText(value) {
+      return ALIGNMENT_LABELS[value] || '?';
+    }
+
+    function getAlignmentClass(value) {
+      if (value === 'white') {
+        return 'alignment-white';
+      }
+
+      if (value === 'black') {
+        return 'alignment-black';
+      }
+
+      return 'alignment-unknown';
+    }
+
+    function getCategoryText(value) {
+      const text = String(value || '').trim();
+      return text || '未分類';
+    }
+
+    function canOperateNpc(npc) {
+      if (!currentPlayerId) {
+        return false;
+      }
+
+      if (FULL_PERMISSION_PLAYER_IDS.includes(currentPlayerId)) {
+        return true;
+      }
+
+      return npc && npc.player_id === currentPlayerId;
+    }
+
+    function compareNpcRows(a, b) {
+      const alignA = ALIGNMENT_SORT_ORDER[a.alignment] || 99;
+      const alignB = ALIGNMENT_SORT_ORDER[b.alignment] || 99;
+
+      if (alignA !== alignB) {
+        return alignA - alignB;
+      }
+
+      return String(a.name || '').localeCompare(String(b.name || ''), 'zh-Hant');
+    }
+
+    function groupNpcRows(rows) {
+      const grouped = new Map();
+
+      rows.forEach(npc => {
+        const category = getCategoryText(npc.npc_category);
+
+        if (!grouped.has(category)) {
+          grouped.set(category, []);
+        }
+
+        grouped.get(category).push(npc);
+      });
+
+      return Array.from(grouped.entries())
+        .sort((a, b) => a[0].localeCompare(b[0], 'zh-Hant'))
+        .map(([category, items]) => ({
+          category,
+          items: items.slice().sort(compareNpcRows)
+        }));
+    }
+
+    async function checkAdminAndSyncCurrentPlayer() {
+      let sessionUser = null;
+      let sessionError = null;
+
+      try {
+        const sessionResult = await client.auth.getSession();
+        sessionUser = sessionResult && sessionResult.data && sessionResult.data.session
+          ? sessionResult.data.session.user
+          : null;
+        sessionError = sessionResult ? sessionResult.error : null;
+      } catch (error) {
+        sessionError = error;
+      }
+
+      if (sessionError) {
+        alert('讀取登入狀態失敗，請重新登入');
+        localStorage.clear();
+        window.location.href = LOGIN_URL;
+        return false;
+      }
+
+      const localPlayerId = localStorage.getItem('player_id') || '';
+      const sessionPlayerId = sessionUser && sessionUser.id ? sessionUser.id : '';
+      const sessionEmail = sessionUser && sessionUser.email ? sessionUser.email : '';
+
+      const candidateIds = [];
+
+      if (localPlayerId) {
+        candidateIds.push(localPlayerId);
+      }
+
+      if (sessionPlayerId && !candidateIds.includes(sessionPlayerId)) {
+        candidateIds.push(sessionPlayerId);
+      }
+
+      if (candidateIds.length === 0 && !sessionEmail) {
+        alert('請先登入');
+        window.location.href = LOGIN_URL;
+        return false;
+      }
+
+      let playerData = null;
+      let queryError = null;
+
+      for (const playerId of candidateIds) {
+        const result = await client
+          .from('players')
+          .select('player_id,username,role,email')
+          .eq('player_id', playerId)
+          .maybeSingle();
+
+        if (result.error) {
+          queryError = result.error;
+          continue;
+        }
+
+        if (result.data) {
+          playerData = result.data;
+          break;
+        }
+      }
+
+      if (!playerData && sessionEmail) {
+        const result = await client
+          .from('players')
+          .select('player_id,username,role,email')
+          .eq('email', sessionEmail)
+          .maybeSingle();
+
+        if (result.error) {
+          queryError = result.error;
+        } else if (result.data) {
+          playerData = result.data;
+        }
+      }
+
+      if (!playerData && queryError) {
+        alert('查詢玩家權限失敗：' + queryError.message);
+        localStorage.clear();
+        window.location.href = LOGIN_URL;
+        return false;
+      }
+
+      if (!playerData) {
+        alert('查無玩家資料，請重新登入');
+        localStorage.clear();
+        window.location.href = LOGIN_URL;
+        return false;
+      }
+
+      if (playerData.role !== 'admin') {
+        alert('你不是管理員，無權進入 NPC 管理頁面');
+        window.location.href = LOGIN_URL;
+        return false;
+      }
+
+      currentPlayerId = playerData.player_id || '';
+      currentPlayerRole = playerData.role || '';
+
+      localStorage.setItem('player_id', playerData.player_id || '');
+      localStorage.setItem('player_role', playerData.role || '');
+      localStorage.setItem('player_username', playerData.username || '');
+
+      return true;
+    }
+
+    async function loadNpcRows() {
+      setMsg('資料載入中...');
+
+      const { data, error } = await client
+        .from('other_npcs')
+        .select('othernpc_id,player_id,name,alignment,npc_category')
+        .order('npc_category', { ascending: true })
+        .order('alignment', { ascending: true })
+        .order('name', { ascending: true });
+
+      if (error) {
+        setMsg('NPC 資料讀取失敗：' + error.message, true);
+        npcRows = [];
+        filteredNpcRows = [];
+        renderNpcSections();
+        return;
+      }
+
+      npcRows = data || [];
+      applySearch();
+      setMsg('');
+    }
+
+    function applySearch() {
+      const input = document.getElementById('search-input');
+      const keyword = input ? input.value.trim().toLowerCase() : '';
+
+      if (!keyword) {
+        filteredNpcRows = npcRows.slice();
+        renderNpcSections();
+        return;
+      }
+
+      filteredNpcRows = npcRows.filter(npc => {
+        const name = String(npc.name || '').toLowerCase();
+        const category = String(npc.npc_category || '').toLowerCase();
+        const alignment = getAlignmentText(npc.alignment).toLowerCase();
+        const rawAlignment = String(npc.alignment || '').toLowerCase();
+
+        return (
+          name.includes(keyword) ||
+          category.includes(keyword) ||
+          alignment.includes(keyword) ||
+          rawAlignment.includes(keyword)
+        );
+      });
+
+      renderNpcSections();
+    }
+
+    function createButton(text, className, onClick) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = className;
+      button.textContent = text;
+      button.onclick = onClick;
+      return button;
+    }
+
+    function renderNpcSections() {
+      const wrap = document.getElementById('npc-sections');
+
+      if (!wrap) {
+        return;
+      }
+
+      wrap.innerHTML = '';
+
+      if (!filteredNpcRows.length) {
+        const empty = document.createElement('div');
+        empty.className = 'empty-text';
+        empty.textContent = '沒有符合條件的 NPC';
+        wrap.appendChild(empty);
+        return;
+      }
+
+      const groups = groupNpcRows(filteredNpcRows);
+
+      groups.forEach(group => {
+        const section = document.createElement('section');
+        section.className = 'npc-section';
+
+        const title = document.createElement('h3');
+        title.textContent = `${group.category}（${group.items.length}）`;
+        section.appendChild(title);
+
+        const tableWrap = document.createElement('div');
+        tableWrap.className = 'table-wrap';
+
+        const table = document.createElement('table');
+
+        const thead = document.createElement('thead');
+        const headRow = document.createElement('tr');
+
+        ['名字', '陣營', '操作'].forEach(label => {
+          const th = document.createElement('th');
+          th.textContent = label;
+          headRow.appendChild(th);
+        });
+
+        thead.appendChild(headRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+
+        group.items.forEach(npc => {
+          const row = document.createElement('tr');
+
+          const nameTd = document.createElement('td');
+          nameTd.className = 'npc-name';
+          nameTd.textContent = npc.name || '';
+          row.appendChild(nameTd);
+
+          const alignmentTd = document.createElement('td');
+          const alignmentSpan = document.createElement('span');
+          alignmentSpan.className = `alignment-pill ${getAlignmentClass(npc.alignment)}`;
+          alignmentSpan.textContent = getAlignmentText(npc.alignment);
+          alignmentTd.appendChild(alignmentSpan);
+          row.appendChild(alignmentTd);
+
+          const actionTd = document.createElement('td');
+          const actionCell = document.createElement('div');
+          actionCell.className = 'action-cell';
+
+          actionCell.appendChild(createButton('資料卡', 'btn btn-card', function () {
+            openNpcCard(npc);
+          }));
+
+          if (canOperateNpc(npc)) {
+            actionCell.appendChild(createButton('設定/裏設定', 'btn btn-note', function () {
+              toggleNpcNotes(npc);
+            }));
+
+            actionCell.appendChild(createButton('正面照', 'btn btn-front', function () {
+              openNpcImageUploadModal(npc, 'front');
+            }));
+
+            actionCell.appendChild(createButton('背面照', 'btn btn-back', function () {
+              openNpcImageUploadModal(npc, 'back');
+            }));
+
+            actionCell.appendChild(createButton('修改', 'btn btn-edit', function () {
+              openNpcEdit(npc);
+            }));
+          }
+
+          actionTd.appendChild(actionCell);
+          row.appendChild(actionTd);
+          tbody.appendChild(row);
+
+          if (openNoteRowId === npc.othernpc_id) {
+            const expandRow = document.createElement('tr');
+            expandRow.className = 'expand-row';
+
+            const expandTd = document.createElement('td');
+            expandTd.colSpan = 3;
+
+            const noteBox = document.createElement('div');
+            noteBox.className = 'note-box';
+            noteBox.innerHTML = openNoteHtml || '<span class="empty-text">讀取中...</span>';
+
+            expandTd.appendChild(noteBox);
+            expandRow.appendChild(expandTd);
+            tbody.appendChild(expandRow);
+          }
+        });
+
+        table.appendChild(tbody);
+        tableWrap.appendChild(table);
+        section.appendChild(tableWrap);
+        wrap.appendChild(section);
+      });
+    }
+
+    function openNpcCard(npc) {
+      const name = npc && npc.name ? npc.name : '';
+      window.open(`${NPC_CARD_BASE_URL}?npc=${encodeURIComponent(name)}`, '_blank');
+    }
+
+    function openNpcEdit(npc) {
+      if (!npc || !npc.othernpc_id) {
+        return;
+      }
+
+      location.href = `${NPC_EDIT_BASE_URL}?othernpc_id=${encodeURIComponent(npc.othernpc_id)}`;
+    }
+
+    async function toggleNpcNotes(npc) {
+      if (!npc || !npc.othernpc_id) {
+        return;
+      }
+
+      if (!canOperateNpc(npc)) {
+        alert('你沒有權限查看或修改這個 NPC 的設定');
+        return;
+      }
+
+      if (openNoteRowId === npc.othernpc_id) {
+        openNoteRowId = '';
+        openNoteHtml = '';
+        renderNpcSections();
+        return;
+      }
+
+      openNoteRowId = npc.othernpc_id;
+      openNoteHtml = '<span class="empty-text">讀取中...</span>';
+      renderNpcSections();
+
+      const { data, error } = await client
+        .from('othernpc_notes')
+        .select('content,is_public,sort_order')
+        .eq('othernpc_id', npc.othernpc_id)
+        .order('sort_order', { ascending: true });
+
+      if (error) {
+        openNoteHtml = `<span style="color:#d44;">讀取設定失敗：${escapeHTML(error.message)}</span>`;
+        renderNpcSections();
+        return;
+      }
+
+      const notes = data || [];
+
+      if (!notes.length) {
+        openNoteHtml = '<span class="empty-text">（無）</span>';
+        renderNpcSections();
+        return;
+      }
+
+      openNoteHtml = `
+        <ul>
+          ${
+            notes.map(note => {
+              const prefix = note.is_public ? '# ' : '? ';
+              return `<li>${prefix}${escapeHTML(note.content)}</li>`;
+            }).join('')
+          }
+        </ul>
+      `;
+
+      renderNpcSections();
+    }
+
+    function resetUploadState() {
+      uploadImage = null;
+      uploadImageX = 200;
+      uploadImageY = 225;
+      uploadScale = 1;
+      uploadRotation = 0;
+      uploadMirrored = false;
+      uploadDragging = false;
+      uploadLastX = 0;
+      uploadLastY = 0;
+      uploadPinchStart = null;
+      uploadPinchInit = {};
+
+      const fileInput = document.getElementById('image-upload-file');
+
+      if (fileInput) {
+        fileInput.value = '';
+      }
+
+      setUploadMsg('');
+      drawUploadCanvas();
+    }
+
+    function openNpcImageUploadModal(npc, imageType) {
+      if (!canOperateNpc(npc)) {
+        alert('你沒有權限修改這個 NPC');
+        return;
+      }
+
+      uploadNpc = npc;
+      uploadImageType = imageType === 'back' ? 'back' : 'front';
+
+      const title = document.getElementById('image-upload-title');
+
+      if (title) {
+        title.textContent = uploadImageType === 'front'
+          ? `上傳正面照：${npc.name || ''}`
+          : `上傳背面照：${npc.name || ''}`;
+      }
+
+      const modal = document.getElementById('image-upload-modal-bg');
+
+      if (modal) {
+        modal.style.display = 'flex';
+      }
+
+      resetUploadState();
+    }
+
+    function closeNpcImageUploadModal() {
+      const modal = document.getElementById('image-upload-modal-bg');
+
+      if (modal) {
+        modal.style.display = 'none';
+      }
+
+      uploadNpc = null;
+      uploadImageType = '';
+      resetUploadState();
+    }
+
+    function setUploadMsg(text, isError) {
+      const el = document.getElementById('image-upload-msg');
+
+      if (!el) {
+        return;
+      }
+
+      el.style.color = isError ? '#d44' : '#1767a0';
+      el.textContent = text || '';
+    }
+
+    function drawUploadCanvas() {
+      if (!uploadCtx) {
+        return;
+      }
+
+      uploadCtx.clearRect(0, 0, 400, 450);
+
+      if (!uploadImage) {
+        return;
+      }
+
+      uploadCtx.save();
+      uploadCtx.translate(uploadImageX, uploadImageY);
+      uploadCtx.rotate(uploadRotation);
+      uploadCtx.scale(uploadMirrored ? -uploadScale : uploadScale, uploadScale);
+      uploadCtx.drawImage(uploadImage, -uploadImage.width / 2, -uploadImage.height / 2);
+      uploadCtx.restore();
+    }
+
+    function getCanvasPoint(e) {
+      const rect = uploadCanvas.getBoundingClientRect();
+      const scaleX = uploadCanvas.width / rect.width;
+      const scaleY = uploadCanvas.height / rect.height;
+
+      return {
+        x: (e.clientX - rect.left) * scaleX,
+        y: (e.clientY - rect.top) * scaleY
+      };
+    }
+
+    function getTouchPoint(touch) {
+      const rect = uploadCanvas.getBoundingClientRect();
+      const scaleX = uploadCanvas.width / rect.width;
+      const scaleY = uploadCanvas.height / rect.height;
+
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
+        clientX: touch.clientX,
+        clientY: touch.clientY
+      };
+    }
+
+    function bindUploadCanvasEvents() {
+      uploadCanvas = document.getElementById('image-edit-canvas');
+
+      if (!uploadCanvas) {
+        return;
+      }
+
+      uploadCtx = uploadCanvas.getContext('2d');
+
+      const fileInput = document.getElementById('image-upload-file');
+
+      if (fileInput) {
+        fileInput.onchange = function (e) {
+          const file = e.target.files && e.target.files[0] ? e.target.files[0] : null;
+
+          if (!file) {
+            return;
+          }
+
+          const reader = new FileReader();
+
+          reader.onload = function (event) {
+            uploadImage = new Image();
+
+            uploadImage.onload = function () {
+              uploadScale = Math.max(400 / uploadImage.width, 450 / uploadImage.height);
+              uploadImageX = 200;
+              uploadImageY = 225;
+              uploadRotation = 0;
+              uploadMirrored = false;
+              drawUploadCanvas();
+            };
+
+            uploadImage.src = event.target.result;
+          };
+
+          reader.readAsDataURL(file);
+        };
+      }
+
+      uploadCanvas.addEventListener('mousedown', function (e) {
+        if (!uploadImage) {
+          return;
+        }
+
+        const point = getCanvasPoint(e);
+        uploadDragging = true;
+        uploadLastX = point.x;
+        uploadLastY = point.y;
+      });
+
+      window.addEventListener('mouseup', function () {
+        uploadDragging = false;
+      });
+
+      uploadCanvas.addEventListener('mouseleave', function () {
+        uploadDragging = false;
+      });
+
+      uploadCanvas.addEventListener('mousemove', function (e) {
+        if (!uploadDragging || !uploadImage) {
+          return;
+        }
+
+        const point = getCanvasPoint(e);
+
+        uploadImageX += point.x - uploadLastX;
+        uploadImageY += point.y - uploadLastY;
+        uploadLastX = point.x;
+        uploadLastY = point.y;
+
+        drawUploadCanvas();
+      });
+
+      uploadCanvas.addEventListener('wheel', function (e) {
+        if (!uploadImage) {
+          return;
+        }
+
+        e.preventDefault();
+        uploadScale *= e.deltaY < 0 ? 1.04 : 0.96;
+        drawUploadCanvas();
+      }, { passive: false });
+
+      window.addEventListener('keydown', function (e) {
+        const modal = document.getElementById('image-upload-modal-bg');
+        const isOpen = modal && modal.style.display !== 'none';
+
+        if (!isOpen || !uploadImage) {
+          return;
+        }
+
+        if (e.key === 'a' || e.key === 'A') {
+          uploadRotation -= Math.PI / 60;
+          drawUploadCanvas();
+        }
+
+        if (e.key === 'd' || e.key === 'D') {
+          uploadRotation += Math.PI / 60;
+          drawUploadCanvas();
+        }
+      });
+
+      uploadCanvas.addEventListener('touchstart', function (e) {
+        if (!uploadImage) {
+          return;
+        }
+
+        e.preventDefault();
+
+        if (e.touches.length === 1) {
+          const point = getTouchPoint(e.touches[0]);
+          uploadDragging = true;
+          uploadLastX = point.x;
+          uploadLastY = point.y;
+        }
+
+        if (e.touches.length === 2) {
+          const p1 = getTouchPoint(e.touches[0]);
+          const p2 = getTouchPoint(e.touches[1]);
+
+          uploadPinchStart = [p1, p2];
+
+          uploadPinchInit = {
+            scale: uploadScale,
+            rotation: uploadRotation,
+            x: uploadImageX,
+            y: uploadImageY
+          };
+        }
+      }, { passive: false });
+
+      uploadCanvas.addEventListener('touchend', function (e) {
+        e.preventDefault();
+
+        uploadDragging = false;
+        uploadPinchStart = null;
+      }, { passive: false });
+
+      uploadCanvas.addEventListener('touchmove', function (e) {
+        if (!uploadImage) {
+          return;
+        }
+
+        e.preventDefault();
+
+        if (e.touches.length === 1 && uploadDragging) {
+          const point = getTouchPoint(e.touches[0]);
+
+          uploadImageX += point.x - uploadLastX;
+          uploadImageY += point.y - uploadLastY;
+          uploadLastX = point.x;
+          uploadLastY = point.y;
+
+          drawUploadCanvas();
+        }
+
+        if (e.touches.length === 2 && uploadPinchStart) {
+          const nowOne = getTouchPoint(e.touches[0]);
+          const nowTwo = getTouchPoint(e.touches[1]);
+          const startOne = uploadPinchStart[0];
+          const startTwo = uploadPinchStart[1];
+
+          const distStart = Math.hypot(startOne.clientX - startTwo.clientX, startOne.clientY - startTwo.clientY);
+          const distNow = Math.hypot(nowOne.clientX - nowTwo.clientX, nowOne.clientY - nowTwo.clientY);
+
+          if (distStart > 0) {
+            uploadScale = uploadPinchInit.scale * (distNow / distStart);
+          }
+
+          const angleStart = Math.atan2(startTwo.clientY - startOne.clientY, startTwo.clientX - startOne.clientX);
+          const angleNow = Math.atan2(nowTwo.clientY - nowOne.clientY, nowTwo.clientX - nowOne.clientX);
+
+          uploadRotation = uploadPinchInit.rotation + (angleNow - angleStart);
+
+          const centerStartX = (startOne.x + startTwo.x) / 2;
+          const centerStartY = (startOne.y + startTwo.y) / 2;
+          const centerNowX = (nowOne.x + nowTwo.x) / 2;
+          const centerNowY = (nowOne.y + nowTwo.y) / 2;
+
+          uploadImageX = uploadPinchInit.x + (centerNowX - centerStartX);
+          uploadImageY = uploadPinchInit.y + (centerNowY - centerStartY);
+
+          drawUploadCanvas();
+        }
+      }, { passive: false });
+    }
+
+    function toggleUploadMirror() {
+      uploadMirrored = !uploadMirrored;
+      drawUploadCanvas();
+    }
+
+    function toStoragePathFromPublicUrl(url) {
+      if (!url) {
+        return '';
+      }
+
+      const marker = `/storage/v1/object/public/${STORAGE_BUCKET}/`;
+      const index = url.indexOf(marker);
+
+      if (index >= 0) {
+        return decodeURIComponent(url.slice(index + marker.length).split('?')[0]);
+      }
+
+      if (!url.includes('://')) {
+        return url.replace(/^\/+/, '').split('?')[0];
+      }
+
+      return '';
+    }
+
+    async function submitNpcCanvasImage() {
+      if (!uploadNpc || !uploadNpc.othernpc_id || !uploadImageType) {
+        setUploadMsg('找不到 NPC 資料', true);
+        return;
+      }
+
+      if (!canOperateNpc(uploadNpc)) {
+        setUploadMsg('你沒有權限修改這個 NPC', true);
+        return;
+      }
+
+      if (!uploadImage) {
+        setUploadMsg('請先選擇圖片', true);
+        return;
+      }
+
+      setUploadMsg('上傳中...');
+
+      uploadCanvas.toBlob(async function (blob) {
+        if (!blob) {
+          setUploadMsg('圖片產生失敗', true);
+          return;
+        }
+
+        try {
+          const othernpcId = uploadNpc.othernpc_id;
+          const imageType = uploadImageType;
+          const filePath = `othernpc-images/${othernpcId}/${imageType}.png`;
+
+          const { data: oldImages } = await client
+            .from('othernpc_images')
+            .select('image_url')
+            .eq('othernpc_id', othernpcId)
+            .eq('image_type', imageType);
+
+          const oldPaths = (oldImages || [])
+            .map(row => toStoragePathFromPublicUrl(row.image_url))
+            .filter(Boolean);
+
+          if (oldPaths.length) {
+            await client.storage.from(STORAGE_BUCKET).remove(oldPaths);
+          }
+
+          await client.storage.from(STORAGE_BUCKET).remove([filePath]);
+
+          const { error: uploadError } = await client.storage
+            .from(STORAGE_BUCKET)
+            .upload(filePath, blob, {
+              upsert: true,
+              contentType: 'image/png'
+            });
+
+          if (uploadError) {
+            throw uploadError;
+          }
+
+          const { data: publicData } = client.storage.from(STORAGE_BUCKET).getPublicUrl(filePath);
+          const publicUrl = publicData && publicData.publicUrl ? publicData.publicUrl : '';
+
+          await client
+            .from('othernpc_images')
+            .delete()
+            .eq('othernpc_id', othernpcId)
+            .eq('image_type', imageType);
+
+          const { error: insertError } = await client
+            .from('othernpc_images')
+            .insert([{
+              othernpc_id: othernpcId,
+              image_type: imageType,
+              image_url: publicUrl,
+              uploaded_by: currentPlayerId || null
+            }]);
+
+          if (insertError) {
+            throw insertError;
+          }
+
+          setUploadMsg('上傳完成！');
+
+          setTimeout(function () {
+            closeNpcImageUploadModal();
+            loadNpcRows();
+          }, 650);
+        } catch (error) {
+          console.error(error);
+          setUploadMsg('上傳失敗：' + (error.message || error), true);
+        }
+      }, 'image/png');
+    }
+
+    function bindPageEvents() {
+      const searchInput = document.getElementById('search-input');
+      const reloadButton = document.getElementById('reload-btn');
+      const closeButton = document.getElementById('image-upload-close-btn');
+      const cancelButton = document.getElementById('image-cancel-btn');
+      const mirrorButton = document.getElementById('image-mirror-btn');
+      const submitButton = document.getElementById('image-submit-btn');
+      const modal = document.getElementById('image-upload-modal-bg');
+
+      if (searchInput) {
+        searchInput.addEventListener('input', applySearch);
+      }
+
+      if (reloadButton) {
+        reloadButton.addEventListener('click', loadNpcRows);
+      }
+
+      if (closeButton) {
+        closeButton.addEventListener('click', closeNpcImageUploadModal);
+      }
+
+      if (cancelButton) {
+        cancelButton.addEventListener('click', closeNpcImageUploadModal);
+      }
+
+      if (mirrorButton) {
+        mirrorButton.addEventListener('click', toggleUploadMirror);
+      }
+
+      if (submitButton) {
+        submitButton.addEventListener('click', submitNpcCanvasImage);
+      }
+
+      if (modal) {
+        modal.addEventListener('click', function (e) {
+          if (e.target === modal) {
+            closeNpcImageUploadModal();
+          }
+        });
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async function () {
+      bindPageEvents();
+      bindUploadCanvasEvents();
+
+      const adminReady = await checkAdminAndSyncCurrentPlayer();
+
+      if (!adminReady) {
+        return;
+      }
+
+      await loadNpcRows();
+    });
+
+    window.openNpcCard = openNpcCard;
+    window.openNpcEdit = openNpcEdit;
+    window.toggleNpcNotes = toggleNpcNotes;
+    window.openNpcImageUploadModal = openNpcImageUploadModal;
+    window.closeNpcImageUploadModal = closeNpcImageUploadModal;
+    window.submitNpcCanvasImage = submitNpcCanvasImage;
+    window.toggleUploadMirror = toggleUploadMirror;
+  </script>
+</body>
+</html>

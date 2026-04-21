@@ -846,67 +846,75 @@
     }
 
     function openNpcEdit(npc) {
-      if (!npc || !npc.othernpc_id) {
-        return;
-      }
+  if (!npc || !npc.othernpc_id) {
+    return;
+  }
 
-      location.href = `${NPC_EDIT_BASE_URL}?othernpc_id=${encodeURIComponent(npc.othernpc_id)}`;
-    }
+  window.open(
+    `${NPC_EDIT_BASE_URL}?othernpc_id=${encodeURIComponent(npc.othernpc_id)}`,
+    '_blank',
+    'noopener,noreferrer'
+  );
+}
 
-    async function toggleNpcNotes(npc) {
-      if (!npc || !npc.othernpc_id) {
-        return;
-      }
+   async function toggleNpcNotes(npc) {
+  if (!npc || !npc.othernpc_id) {
+    return;
+  }
 
-      if (!canOperateNpc(npc)) {
-        alert('你沒有權限查看或修改這個 NPC 的設定');
-        return;
-      }
+  if (!canOperateNpc(npc)) {
+    alert('你沒有權限查看或修改這個 NPC 的設定');
+    return;
+  }
 
-      if (openNoteRowId === npc.othernpc_id) {
-        openNoteRowId = '';
-        openNoteHtml = '';
-        renderNpcSections();
-        return;
-      }
+  if (openNoteRowId === npc.othernpc_id) {
+    openNoteRowId = '';
+    openNoteHtml = '';
+    renderNpcSections();
+    return;
+  }
 
-      openNoteRowId = npc.othernpc_id;
-      openNoteHtml = '<span class="empty-text">讀取中...</span>';
-      renderNpcSections();
+  openNoteRowId = npc.othernpc_id;
+  openNoteHtml = '<span class="empty-text">讀取中...</span>';
+  renderNpcSections();
 
-      const { data, error } = await client
-        .from('othernpc_notes')
-        .select('content,is_public,sort_order')
-        .eq('othernpc_id', npc.othernpc_id)
-        .order('sort_order', { ascending: true });
+  const { data, error } = await client
+    .from('othernpc_notes')
+    .select('content,is_public,sort_order')
+    .eq('othernpc_id', npc.othernpc_id)
+    .order('sort_order', { ascending: true });
 
-      if (error) {
-        openNoteHtml = `<span style="color:#d44;">讀取設定失敗：${escapeHTML(error.message)}</span>`;
-        renderNpcSections();
-        return;
-      }
+  if (error) {
+    openNoteHtml = `<span style="color:#d44;">讀取設定失敗：${escapeHTML(error.message)}</span>`;
+    renderNpcSections();
+    return;
+  }
 
-      const notes = data || [];
+  const notes = data || [];
+  const updateUrl = `npcupdata?othernpc_id=${encodeURIComponent(npc.othernpc_id)}`;
 
-      if (!notes.length) {
-        openNoteHtml = '<span class="empty-text">（無）</span>';
-        renderNpcSections();
-        return;
-      }
+  const noteListHtml = notes.length
+    ? `
+      <ul>
+        ${
+          notes.map(note => {
+            const prefix = note.is_public ? '# ' : '? ';
+            return `<li>${prefix}${escapeHTML(note.content)}</li>`;
+          }).join('')
+        }
+      </ul>
+    `
+    : '<span class="empty-text">（無）</span>';
 
-      openNoteHtml = `
-        <ul>
-          ${
-            notes.map(note => {
-              const prefix = note.is_public ? '# ' : '? ';
-              return `<li>${prefix}${escapeHTML(note.content)}</li>`;
-            }).join('')
-          }
-        </ul>
-      `;
+  openNoteHtml = `
+    ${noteListHtml}
+    <div style="margin-top:1.1em;">
+      <button class="btn btn-edit" type="button" onclick="location.href='${updateUrl}'">更新</button>
+    </div>
+  `;
 
-      renderNpcSections();
-    }
+  renderNpcSections();
+}
 
     function resetUploadState() {
       uploadImage = null;

@@ -436,9 +436,12 @@
     const LOGIN_URL = 'https://shierusha.github.io/login/login';
     const STORAGE_BUCKET = 'student-img';
 
-    const HIDDEN_NPC_CATEGORIES = [
-      '內部測試',
-      '喵喵喵'
+    const BASE_HIDDEN_NPC_CATEGORIES = [
+      '內部測試'
+    ];
+
+    const HIDDEN_CATEGORY_SOURCE_PLAYER_IDS = [
+      '8aea3076-294c-41f6-bb38-0a99da77c098'
     ];
 
     const FULL_PERMISSION_PLAYER_IDS = [
@@ -486,6 +489,7 @@
     let uploadLastY = 0;
     let uploadPinchStart = null;
     let uploadPinchInit = {};
+    let dynamicHiddenNpcCategorySet = new Set(BASE_HIDDEN_NPC_CATEGORIES);
 
     function escapeHTML(str) {
       return String(str || '')
@@ -528,9 +532,27 @@
       return text || '未分類';
     }
 
+    function rebuildDynamicHiddenNpcCategoriesFromRows(rows) {
+      dynamicHiddenNpcCategorySet = new Set(BASE_HIDDEN_NPC_CATEGORIES);
+
+      const safeRows = Array.isArray(rows) ? rows : [];
+
+      safeRows.forEach(npc => {
+        if (!npc || !HIDDEN_CATEGORY_SOURCE_PLAYER_IDS.includes(npc.player_id)) {
+          return;
+        }
+
+        const category = getCategoryText(npc.npc_category);
+
+        if (category) {
+          dynamicHiddenNpcCategorySet.add(category);
+        }
+      });
+    }
+
     function isHiddenNpcCategory(value) {
       const category = getCategoryText(value);
-      return HIDDEN_NPC_CATEGORIES.includes(category);
+      return dynamicHiddenNpcCategorySet.has(category);
     }
 
     function hasFullPermission() {
@@ -745,11 +767,13 @@
         setMsg('NPC 資料讀取失敗：' + error.message, true);
         npcRows = [];
         filteredNpcRows = [];
+        rebuildDynamicHiddenNpcCategoriesFromRows([]);
         renderNpcSections();
         return;
       }
 
       npcRows = data || [];
+      rebuildDynamicHiddenNpcCategoriesFromRows(npcRows);
       applySearch();
       setMsg('');
     }
